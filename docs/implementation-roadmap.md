@@ -21,6 +21,14 @@ Use actual API access the team has obtained. If a source requires credentials or
 
 ## 2. Delivery phases
 
+### Current implementation checkpoint
+
+- Implemented: Python package skeleton, Pydantic case/evidence contracts, LangGraph identity gate, parallel specialist fan-out/join, isolated branch failures, comparison board, and no-score analyst-review routing.
+- Implemented: local Streamlit case intake and explicit demo-fixture mode.
+- Implemented: GLEIF exact-LEI API lookup with response hash and source citation. A deterministic name mismatch pauses the case before other research branches; a match still requires analyst review.
+- Not implemented for the connector layer: durable raw-response persistence, name search, retry/checkpointing, or health scheduling.
+- Not implemented: Snowflake persistence, Cortex services, other live source adapters, scoring policy, authentication, or production deployment.
+
 ### Phase 0: Decide the demo and Snowflake account constraints
 
 - Choose a primary entity and a second jurisdiction/source pair that the team can actually access.
@@ -52,7 +60,7 @@ Use actual API access the team has obtained. If a source requires credentials or
 ### Phase 2: Connector contract and ingestion
 
 - Implement a typed source adapter contract: `health`, `search`, `fetch`, `parse_raw`, `checkpoint`, and source-specific freshness/access metadata.
-- Implement the existing SEC and GLEIF adapters behind that contract; do not let workflow nodes own HTTP behavior.
+- GLEIF exact-LEI lookup now runs behind the adapter contract; implement jurisdictional registry and event-source adapters after access/terms review. Do not let workflow nodes own HTTP behavior.
 - Add one new official registry adapter chosen from the researched catalog and actually authorized for the team.
 - Add one official event source, preferably a structured sanctions list or regulator source with a documented file/API.
 - Store raw observations before parsing; use content hashes, source record keys, retrieval timestamps, and connector versions.

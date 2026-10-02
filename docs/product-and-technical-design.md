@@ -355,14 +355,14 @@ Keep raw observation retention and searchable document retention configurable by
 
 ## 9. Existing implementation and migration
 
-Current code provides a useful prototype foundation: Streamlit intake/review UI, LangGraph KYB orchestration, SEC and GLEIF clients, public search, structured result models, negative-news validation, and local run artifacts. The current master workflow runs linkage, enrichment, board, negative-news, and general-search branches, then synthesizes a result. The full inventory and implementation gaps are in [current-state-reconstruction.md](current-state-reconstruction.md).
+The historical US-oriented implementation is captured in [current-state-reconstruction.md](current-state-reconstruction.md), but it is not present in this branch. The active starter currently provides typed case contracts, a LangGraph identity gate and parallel specialist branches, a Streamlit intake/review surface, demo fixtures, and an exact-LEI GLEIF lookup adapter. It does not yet provide durable case storage, Snowflake integration, or additional live source connectors.
 
 Migration direction:
 
-1. Preserve current user-facing research capabilities while separating source connectors from LangGraph nodes.
+1. Keep each source connector independent from LangGraph nodes and user-interface code.
 2. Define the normalized source, entity, evidence, event, coverage, and assessment contracts before adding countries.
 3. Replace US-only assumptions with `jurisdiction` plus a source-adapter registry. Make US/UK screening values data/configuration, not global code enums.
-4. Retain SEC and GLEIF as first adapters; add one accessible non-US registry and one global/regional official event source for the hackathon demonstration.
+4. The exact-LEI GLEIF lookup is the first live adapter; add one jurisdictional registry and one official event source for the hackathon demonstration.
 5. Land observations and outputs in Snowflake; keep the UI thin and read from governed serving views/APIs.
 6. Add persistent alerts and cross-run history only after source ingestion and event identity are reliable.
 

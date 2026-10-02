@@ -1,6 +1,6 @@
 # Official Source Catalog: Global Starting Set
 
-**Research checked:** 2026-10-01
+**Research checked:** 2026-10-02
 **Purpose:** Initial source discovery for TrustSignal design, not proof that connectors, commercial rights, or API credentials are available.
 
 ## 1. How to read this catalog
@@ -20,6 +20,8 @@ Access labels:
 | Source | What it can support | Access and limits |
 |---|---|---|
 | [GLEIF LEI data / API](https://www.gleif.org/en/lei-data/access-and-use-lei-data) | LEI legal-entity reference data and parent/child relationship reporting where entities have LEIs. | Global identifier network, not a complete register of every company. Coverage depends on LEI adoption and reported relationship data. Use as a strong cross-border key, not a universal identity oracle. |
+
+**Connector implementation:** exact-LEI record retrieval is implemented in `src/trust_signal/connectors/gleif.py` and was exercised against the public API on 2026-10-02. It does not perform name search, resolve aliases, or establish identity from an LEI alone. The live workflow compares the returned legal name to the submitted name and pauses on disagreement. Snowflake persistence and terms/retention review remain outstanding.
 | [EU e-Justice: Find a company / BRIS](https://e-justice.europa.eu/topics/registers-business-insolvency-land/business-registers-search-company-eu/general-information-find-company_en) | Search company records in EU, Iceland, Liechtenstein, and Norway; retrieve available national filings and legal-representative information. | Portal search obtains information in real time from participating registers, but available details/documents vary by register. Do not assume public bulk API access. |
 | [EU insolvency registers](https://webgate.ec.europa.eu/iri/index.html) | Search insolvency records from participating EU national registers. | Not all Member States are connected; Denmark is excluded from this interface and national search rules differ. Treat uncovered countries as gaps. |
 | [EU Beneficial Ownership Registers Interconnection System (BORIS)](https://e-justice.europa.eu/sitemap_en) | Discovery of beneficial-ownership register access points. | Access is governed by EU and national law and is not generally equivalent to unrestricted public bulk access. Verify current lawful access before integration. |

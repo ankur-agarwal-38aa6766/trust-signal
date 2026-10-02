@@ -4,6 +4,29 @@ TrustSignal is a global legal-entity and organization monitoring product. It res
 
 This repository began as a US-oriented KYB research console. The existing implementation and its reconstruction notes are preserved in [docs/current-state-reconstruction.md](docs/current-state-reconstruction.md). The forward-looking product design is in the documents below.
 
+## Run locally
+
+Requires Python 3.11 or newer and `uv`.
+
+```bash
+uv sync --extra dev
+uv run streamlit run app.py
+```
+
+The starter runs the identity-input gate, parallel demo specialist branches, comparison board, and review routing. Demo mode uses clearly labeled fixtures. Live GLEIF mode performs an exact-LEI identity lookup only; no further specialist research runs until the identity is confirmed. Neither mode persists to Snowflake or calculates a risk score.
+
+To run the JSON command-line workflow with local fixtures:
+
+```bash
+uv run trust-signal "Example Organization Ltd" --jurisdiction GB --registration-id 00000000
+```
+
+For a live GLEIF lookup, provide the exact LEI and opt into live mode:
+
+```bash
+uv run trust-signal "Bloomberg Finance L.P." --lei 5493001KJTIIGC8Y1R12 --source-mode gleif_live
+```
+
 ## Design documents
 
 - [Complete system design and operating plan](docs/system-design.md): requirements, service boundaries, multi-agent runtime, scoring, security, deployment, reliability, evaluation, cost, risks, and release gates.
@@ -11,6 +34,7 @@ This repository began as a US-oriented KYB research console. The existing implem
 - [Official source catalog](docs/official-source-catalog.md): global source families and an initial, researched registry list with access and freshness notes.
 - [Implementation roadmap](docs/implementation-roadmap.md): hackathon MVP, delivery phases, acceptance criteria, and work sequence.
 - [Current-state reconstruction specification](docs/current-state-reconstruction.md): detailed record of the existing codebase and its gaps; this describes inspected behavior, not the new target architecture.
+- [Snowflake foundation](snowflake/README.md): initial database schema migration and account setup boundary.
 
 ## Product principles
 
@@ -28,4 +52,4 @@ See the [technical design](docs/product-and-technical-design.md) and [roadmap](d
 
 ## Current implementation
 
-The checkout currently contains a Streamlit application and Python/LangGraph workflows that use SEC, GLEIF, and public web search, with local JSON artifacts and SQLite checkpoints. It does not yet implement the global source network or Snowflake-centered production architecture described in the design documents. See the [current-state specification](docs/current-state-reconstruction.md) for detail.
+The current branch contains the initial Python/LangGraph application scaffold, local Streamlit interface, and exact-LEI GLEIF connector. The previous US-oriented KYB implementation is documented in the [current-state reconstruction](docs/current-state-reconstruction.md); it is not present in this checkout. Other live source connectors and Snowflake persistence are not yet implemented.
