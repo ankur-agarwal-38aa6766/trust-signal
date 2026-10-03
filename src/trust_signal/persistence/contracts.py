@@ -6,6 +6,14 @@ from typing import Protocol
 from trust_signal.connectors.base import SourceObservation
 
 
+class ObservationWriteError(RuntimeError):
+    """A write failed or its stored result could not be verified."""
+
+
+class SqlExecutor(Protocol):
+    def execute(self, sql: str) -> list[dict]: ...
+
+
 @dataclass(frozen=True)
 class ObservationReceipt:
     observation_id: str

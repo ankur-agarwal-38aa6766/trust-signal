@@ -1,49 +1,78 @@
-# Snowflake Foundation
+# Snowflake Resources
 
-The [application connection guide](../docs/application-connection.md) documents
-the verified reusable Python session, dedicated DEV service identity, key storage,
-runtime grants, health check and application-mode ingestion commands.
+## One Setup Path
 
-`migrations/V001__foundation.sql` creates the first raw, core, operations, and serving schemas plus append-oriented case, evidence, assessment, reviewer-action, and source-run tables. `migrations/V002__case_requests_and_serving.sql` adds durable intake requests, source configuration, scoring-policy storage, and analyst-facing views.
+Follow [the repository quickstart](../README.md#try-in-your-snowflake-account).
+Keep account settings in private `.env`, credentials in `.secrets/`, and generated
+plans in ignored `outputs/setup/`. Use the key generator for a new installation;
+it refuses to overwrite credentials. Preserve existing working keys.
 
-## Apply in development
+```bash
+uv run --locked --extra snowflake python -m trust_signal.persistence.setup \
+  --env-file .env --public-key-file .secrets/snowflake_key.pub \
+  --output outputs/setup/snowflake.sql
+```
 
-1. Select the intended development account, role, warehouse, and database in Snowflake CLI or Snowsight.
-2. Review the migration and data-retention requirements for the source data you intend to store.
-3. Use `bootstrap/ACCOUNT_SETUP.sql.template` as a reviewed, account-admin-only starting point for a database, warehouses, and roles. Replace its placeholders locally; do not execute it unchanged.
-4. Run `migrations/V001__foundation.sql`, then `migrations/V002__case_requests_and_serving.sql`, with the development database as the current database.
-5. Confirm the four `TRUST_SIGNAL_*` schemas, serving views, and tables exist before wiring application writes.
+This validates configured identifiers and the matching key pair, then generates
+administrator-reviewed SQL. It opens no connection and executes nothing. Review
+and apply the plan in the intended account before running the application health
+check. Do not use ingestion credentials to administer the account.
 
-The migration files do not create a database, users, grants, network integrations, secrets, Cortex objects, or production policies. The bootstrap template creates only a database, warehouses, and empty roles. V003 has been applied to the user's DEV account; V001/V002 have not been verified in full. Snowflake standard tables do not enforce these application identifiers as unique; idempotency must be implemented by the writer and verified with tests.
+The generator is the canonical setup source; duplicate account/identity templates
+have been removed. Setup does not replace existing user keys, reconcile schema
+drift or guarantee an atomic upgrade. It includes only the currently needed
+ingestion grants.
 
-`TENANT_ID` on case-scoped records must be assigned from authenticated server-side context, never accepted from an untrusted browser request. The local starter has no authentication or tenant isolation and is not suitable for multi-user deployment.
+## Layout
 
-Raw payload storage is intentionally separated from core findings. Before retaining any source response, configure permitted fields, source-specific retention, access roles, and any jurisdictional deletion obligations.
+```text
+snowflake/
+  migrations/              # Ordered schema changes; preserve migration history
+  bootstrap/
+    README.md              # Optional integration boundary
+    EXTERNAL_ACCESS.sql.template
+  app/streamlit_app.py      # Future hosted reviewer UI scaffold
+  snowflake.yml            # Future Streamlit deployment scaffold
+```
 
-## Verified raw-evidence path
+| Migration | Purpose |
+|---|---|
+| V001 | Foundation schemas and raw/core/run tables |
+| V002 | Case intake, source configuration and serving views |
+| V003 | Historical standalone source-run table setup |
+| V004 | Exact JSON/XML response retention; required by the current writer |
+| V005 | Identity-decision snapshots and evidence views |
 
-The `TRUST_SIGNAL_DEV.TRUST_SIGNAL_RAW.SOURCE_OBSERVATIONS` table has been created
-in the user's DEV account. The `trust_signal_dev` CLI connection uses local OAuth,
-the deployer role, and `TRUST_SIGNAL_PIPELINE_WH`. A real Microsoft GLEIF observation
-has been automatically inserted and read back, and replay of the original saved
-observation was verified without an additional row. This verifies the raw table and
-storage adapter only; it does not mean V001/V002 were applied in full.
+V003 intentionally repeats V001's `CREATE TABLE IF NOT EXISTS`: it enabled a
+standalone log deployment before the entire foundation was deployed. Preserve
+released migration history. A fresh setup applies all migrations in order;
+don't stop at V001/V002 because current evidence verification also requires V004.
 
-See the [source integration register](../docs/source-integration-status.md) for the
-commands and captured load receipt. The remaining migration objects, connector roles,
-and case workflow persistence still need implementation/validation.
+## Runtime Boundaries
 
-`migrations/V003__source_run_tracking.sql` has separately created
-`TRUST_SIGNAL_DEV.TRUST_SIGNAL_OPS.SOURCE_RUNS`. The automated GLEIF command now
-uses this table to track fetch-to-storage execution. See the integration register
-for the inspection query, failure semantics and remaining durability limitations.
+Configuration: `persistence/settings.py`; lifecycle: `persistence/connection.py`.
+Repositories consume `SqlExecutor`, not a particular authentication method.
+Evidence, source runs and identity snapshots have independent repositories and
+can share the reusable session. `snowflake_cli.py` is an optional SQL transport
+with compatibility adapters, not the application storage layer.
 
-## Streamlit deployment
+The ingestion role has SELECT/INSERT on raw observations and SELECT/INSERT/UPDATE
+on source runs. CORE writing, UI, network, Cortex and deployment permissions need
+separate grants. Standard tables do not enforce application-ID uniqueness;
+this is a single-writer path, not concurrent exactly-once processing.
 
-`migrations/V004__raw_response_retention.sql` adds exact JSON/XML body retention
-for the [shared ingestion pipeline](../docs/source-ingestion.md). Apply it before
-using the strengthened observation writer, including the existing GLEIF loader.
+## Verification and Remaining Work
 
-`snowflake.yml` declares a warehouse-runtime Streamlit application whose source is `app/streamlit_app.py`. It is a thin analyst UI: it queues a case request and reads serving views. The LangGraph worker owns request claiming, source fetches, evidence persistence, scoring, and status changes.
+Real GLEIF evidence, source-run logging, key-pair session reuse and bundle replay
+have been verified in the existing DEV account. Full fresh-account provisioning
+has not been independently live-tested. Setup tests do not claim cloud deployment.
+See [the integration register](../docs/source-integration-status.md).
 
-Set the target database, warehouse, schema, and app name through the project environment before deployment. Deploy from a reviewed commit with the Snowflake CLI after confirming the connection, privileges, and [Streamlit project-definition requirements](https://docs.snowflake.com/en/developer-guide/snowflake-cli/streamlit-apps/manage-apps/initialize-app). The account configuration and execution checklist are in [the Snowflake delivery blueprint](../docs/snowflake-delivery-blueprint.md).
+The Streamlit manifest and app are scaffolding, not a deployed persistent worker,
+authenticated reviewer UI, Cortex service or Task/dbt pipeline. The CLI manifest
+does not automatically consume `.env`; UI deployment needs explicit parameter mapping.
+
+Before multi-user deployment, implement tenant-bound identities, row access,
+retention/licensing controls and safe review actions. Do not grant the UI or AI
+tools raw-response access. See [Portable Deployment](../docs/portable-deployment.md)
+and [the delivery blueprint](../docs/snowflake-delivery-blueprint.md).

@@ -33,8 +33,11 @@ This is a separate installation, not a data migration or automatic tenant switch
 
 1. The account owner supplies their account, service user, runtime role, warehouse
    and dedicated application database names in their private `.env`.
-2. Generate a separate encrypted RSA key pair for that installation. Store its
-   private key/passphrase securely; retain its public PEM file for provisioning.
+2. Generate a separate encrypted RSA key pair for that installation with
+   `python -m trust_signal.persistence.keys --env-file .env --public-key-file .secrets/snowflake_key.pub`.
+   The command creates private directories/files and refuses to overwrite any
+   existing credentials. Retain the public PEM file for provisioning. The setup
+   generator verifies that it matches the application's private key.
 3. Generate a setup plan locally:
 
 ```bash

@@ -29,7 +29,7 @@ def test_xml_is_stored_with_exact_body_and_metadata_and_verified_hash():
            "CONTENT_HASH": observation.content_hash, "STORED_RESPONSE_HASH": observation.content_hash,
            "PAYLOAD_JSON": json.dumps(observation.raw_payload)}
     store = SnowflakeCliObservationStore("dev")
-    store.execute = Mock(return_value=[{"number of rows inserted": 1}, row])
+    store.executor.execute = Mock(return_value=[{"number of rows inserted": 1}, row])
     assert store.store_observation(observation).verified_rows == 1
     row["STORED_RESPONSE_HASH"] = "corrupt"
     with pytest.raises(ObservationWriteError):

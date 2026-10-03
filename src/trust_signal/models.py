@@ -6,8 +6,9 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import uuid4
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
+from trust_signal.domain.aggregation import AggregationResult, ComparisonItem
 from trust_signal.domain.base import Contract
 from trust_signal.domain.identity import IdentityResolution
 
@@ -70,10 +71,18 @@ class Finding(Contract):
     claim_type: str
     claim: str = Field(min_length=1, max_length=2000)
     subject: str
+    subject_id: str | None = None
+    claim_key: str | None = None
+    claim_value: str | None = None
+    event_id: str | None = None
+    event_at: datetime | None = None
+    effective_at: datetime | None = None
     source_id: str
     source_name: str
     source_url: str | None = None
     source_record_id: str | None = None
+    observation_ids: list[str] = Field(default_factory=list)
+    source_run_id: str | None = None
     content_hash: str | None = None
     connector_version: str | None = None
     observed_at: datetime = Field(default_factory=utc_now)
@@ -81,6 +90,13 @@ class Finding(Contract):
     verification_status: str = "unverified"
     procedural_status: str | None = None
     risk_weight: int = Field(default=0, ge=0, le=100)
+
+    @field_validator("event_at", "effective_at")
+    @classmethod
+    def require_timezone(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.utcoffset() is None:
+            raise ValueError("Event and effective timestamps require a timezone.")
+        return value
 
 
 class BranchResult(Contract):
@@ -93,12 +109,6 @@ class BranchResult(Contract):
     identity_resolution: IdentityResolution | None = None
     started_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime = Field(default_factory=utc_now)
-
-
-class ComparisonItem(Contract):
-    finding_ids: list[str]
-    relation: str
-    summary: str
 
 
 class Assessment(Contract):
@@ -118,5 +128,6 @@ class CaseResult(Contract):
     identity_resolution: IdentityResolution | None = None
     branches: list[BranchResult] = Field(default_factory=list)
     comparison_board: list[ComparisonItem] = Field(default_factory=list)
+    aggregation: AggregationResult | None = None
     assessment: Assessment
     created_at: datetime = Field(default_factory=utc_now)

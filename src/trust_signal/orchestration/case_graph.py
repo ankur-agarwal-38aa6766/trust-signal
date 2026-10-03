@@ -11,6 +11,8 @@ from langgraph.types import Send
 
 from trust_signal.agents.fixtures import Branch
 from trust_signal.agents.registry import branches_for_mode
+from trust_signal.aggregation import AggregationService, EvidenceAggregator
+from trust_signal.domain.aggregation import AggregationResult
 from trust_signal.domain.identity import IdentityCandidate, IdentityResolution, ResolutionStatus
 from trust_signal.models import (
     Assessment,
@@ -34,6 +36,7 @@ class WorkflowState(TypedDict, total=False):
     identity_resolution: IdentityResolution
     branches: Annotated[list[BranchResult], add]
     comparison_board: list[ComparisonItem]
+    aggregation: AggregationResult
     assessment: Assessment
     status: CaseStatus
 
@@ -76,22 +79,10 @@ def _branch_node(branch_id: str, branch: Branch):
     return run
 
 
-def compare_branches(state: WorkflowState) -> dict:
-    # The starter flags repeated claim types without merging or discarding evidence.
-    grouped: dict[tuple[str, str], list[str]] = {}
-    for branch in state.get("branches", []):
-        for finding in branch.findings:
-            key = (finding.subject.casefold(), finding.claim_type)
-            grouped.setdefault(key, []).append(finding.finding_id)
-    board = [
-        ComparisonItem(
-            finding_ids=ids,
-            relation="same_claim_type_across_branches" if len(ids) > 1 else "single_finding",
-            summary=f"{len(ids)} finding(s) for {claim_type}; inspect each source independently.",
-        )
-        for (_, claim_type), ids in sorted(grouped.items())
-    ]
-    return {"comparison_board": board}
+def compare_branches(state: WorkflowState, aggregator: AggregationService | None = None) -> dict:
+    result = (aggregator or EvidenceAggregator()).aggregate(
+        state.get("branches", []), state.get("identity_resolution"))
+    return {"comparison_board": result.comparison_board, "aggregation": result}
 
 
 def assess_case(state: WorkflowState) -> dict:
@@ -200,7 +191,8 @@ def _dispatch(branch_ids: list[str]):
 
 
 def build_case_graph(branches: dict[str, Branch] | None = None,
-                     source_mode: SourceMode = SourceMode.DEMO_FIXTURES):
+                     source_mode: SourceMode = SourceMode.DEMO_FIXTURES, *,
+                     aggregator: AggregationService | None = None):
     branch_map = branches if branches is not None else branches_for_mode(SourceMode.DEMO_FIXTURES)
     if not branch_map:
         raise ValueError("At least one specialist branch is required.")
@@ -210,7 +202,7 @@ def build_case_graph(branches: dict[str, Branch] | None = None,
     graph = StateGraph(WorkflowState)
     graph.add_node("identity_gate", identity_gate)
     graph.add_node("assess_incomplete", assess_case)
-    graph.add_node("compare", compare_branches)
+    graph.add_node("compare", lambda state: compare_branches(state, aggregator))
     graph.add_node("assess", assess_case)
     for branch_id, branch in branch_map.items():
         graph.add_node(branch_id, _branch_node(branch_id, branch))
@@ -245,9 +237,10 @@ def build_case_graph(branches: dict[str, Branch] | None = None,
     return graph.compile()
 
 
-def run_case(request: CaseRequest, branches: dict[str, Branch] | None = None) -> CaseResult:
-    branch_map = branches if branches is not None else branches_for_mode(request.source_mode)
-    state = build_case_graph(branch_map, request.source_mode).invoke({"request": request})
+def run_case(request: CaseRequest, branches: dict[str, Branch] | None = None, *,
+             ingestion_pipeline=None, aggregator: AggregationService | None = None) -> CaseResult:
+    branch_map = branches if branches is not None else branches_for_mode(request.source_mode, ingestion_pipeline)
+    state = build_case_graph(branch_map, request.source_mode, aggregator=aggregator).invoke({"request": request})
     return CaseResult(
         case_id=request.case_id,
         party=request.party,
@@ -256,5 +249,6 @@ def run_case(request: CaseRequest, branches: dict[str, Branch] | None = None) ->
         identity_resolution=state.get("identity_resolution"),
         branches=state.get("branches", []),
         comparison_board=state.get("comparison_board", []),
+        aggregation=state.get("aggregation"),
         assessment=state["assessment"],
     )

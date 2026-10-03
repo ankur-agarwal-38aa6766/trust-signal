@@ -96,6 +96,14 @@ def test_setup_plan_uses_account_names_without_opening_connection(env_file, tmp_
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo,
     ))
     settings = SnowflakeSettings.from_env(env_file)
+    settings.private_key_file.parent.mkdir(mode=0o700)
+    settings.private_key_file.write_bytes(key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.BestAvailableEncryption(b"test-password"),
+    ))
+    settings.private_key_passphrase_file.write_text("test-password")
+    settings.private_key_file.chmod(0o600)
+    settings.private_key_passphrase_file.chmod(0o600)
     sql = setup_sql(settings, public, Path("snowflake/migrations"))
     assert "CREATE DATABASE IF NOT EXISTS OTHER_DB" in sql
     assert "CREATE WAREHOUSE IF NOT EXISTS OTHER_WH" in sql

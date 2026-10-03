@@ -10,7 +10,7 @@ from pathlib import Path
 
 from trust_signal.connectors.base import SourceObservation
 from trust_signal.ingestion.observation import prepare_observation
-from trust_signal.persistence.connection import SnowflakeSettings, application_stores
+from trust_signal.persistence.connection import application_stores
 from trust_signal.persistence.contracts import ObservationReceipt, ObservationStore
 from trust_signal.persistence.snowflake_cli import SnowflakeCliObservationStore
 
@@ -54,9 +54,8 @@ def main() -> None:
     args = parser.parse_args()
     config = args.application_config or args.env_file
     if config:
-        database = args.database or SnowflakeSettings.from_config(config).database
-        with application_stores(config, database) as (store, _runs):
-            receipt = load_bundle(args.bundle_dir, store, database)
+        with application_stores(config, args.database) as (store, _runs):
+            receipt = load_bundle(args.bundle_dir, store, store.database)
     else:
         args.database = args.database or "TRUST_SIGNAL_DEV"
         store = SnowflakeCliObservationStore(args.connection, args.database)

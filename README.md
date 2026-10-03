@@ -36,28 +36,19 @@ cp .env.example .env
    Explicitly exported environment variables override `.env` values, so remove
    stale settings from another account before proceeding.
 
-3. Generate your own encrypted keys with OpenSSL. Run these commands only for a
-   new installation: they overwrite files with the same names.
+3. Generate your own encrypted keys. The command uses the configured file paths,
+   creates private directories/files, and refuses to overwrite existing credentials.
 
 ```bash
-umask 077
-mkdir -p .secrets
-chmod 700 .secrets
 chmod 600 .env
-openssl rand -hex -out .secrets/snowflake_key.pass 48
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
-  -aes-256-cbc -pass file:.secrets/snowflake_key.pass \
-  -out .secrets/snowflake_key.p8
-openssl pkey -in .secrets/snowflake_key.p8 \
-  -passin file:.secrets/snowflake_key.pass -pubout \
-  -out .secrets/snowflake_key.pub
-chmod 600 .secrets/snowflake_key.p8 .secrets/snowflake_key.pass
+uv run --locked --extra snowflake python -m trust_signal.persistence.keys \
+  --env-file .env --public-key-file .secrets/snowflake_key.pub
 ```
 
 4. Generate the setup SQL. This command does **not** connect or provision resources:
 
 ```bash
-uv run --locked python -m trust_signal.persistence.setup \
+uv run --locked --extra snowflake python -m trust_signal.persistence.setup \
   --env-file .env --public-key-file .secrets/snowflake_key.pub \
   --output outputs/setup/snowflake.sql
 ```
@@ -73,8 +64,8 @@ and setup DDL can partially commit. See [Portable Deployment](docs/portable-depl
 5. Verify the connection and ingest a real Microsoft GLEIF record:
 
 ```bash
-uv run --locked python -m trust_signal.persistence.connection --env-file .env
-uv run --locked python -m trust_signal.ingestion.raw_export \
+uv run --locked --extra snowflake python -m trust_signal.persistence.connection --env-file .env
+uv run --locked --extra snowflake python -m trust_signal.ingestion.raw_export \
   --env-file .env --lei INR2EJN1ERAN0W5ZP974 \
   --expected-name "MICROSOFT CORPORATION" \
   --output-dir outputs/live/microsoft_gleif
@@ -86,7 +77,7 @@ This path uses actual official-source data, not synthetic evidence. Replay the
 saved bundle without refetching to check sequential duplicate prevention:
 
 ```bash
-uv run --locked python -m trust_signal.ingestion.load \
+uv run --locked --extra snowflake python -m trust_signal.ingestion.load \
   --env-file .env --bundle-dir outputs/live/microsoft_gleif
 ```
 
@@ -102,7 +93,7 @@ are ignored by Git; `.env.example` is the shareable template.
 uv run --locked streamlit run app.py
 ```
 
-The starter runs the identity-input gate, parallel demo specialist branches, comparison board, and review routing. Demo mode uses clearly labeled fixtures. Live GLEIF mode performs an exact-LEI identity lookup only; no further specialist research runs until the identity is confirmed. Neither mode persists to Snowflake or calculates a risk score.
+The starter runs the identity-input gate, parallel demo specialist branches, comparison board, and review routing. Demo mode uses clearly labeled fixtures. Live GLEIF mode stores and verifies the raw registry response and source-run history in Snowflake before resolving identity and producing a finding. Full case persistence and scoring remain pending.
 
 To run the JSON command-line workflow with local fixtures:
 
@@ -113,40 +104,32 @@ uv run trust-signal "Example Organization Ltd" --jurisdiction GB --registration-
 For a live GLEIF lookup, provide the exact LEI and opt into live mode:
 
 ```bash
-uv run trust-signal "Bloomberg Finance L.P." --lei 5493001KJTIIGC8Y1R12 --source-mode gleif_live
+uv run --locked --extra snowflake trust-signal "Bloomberg Finance L.P." \
+  --lei 5493001KJTIIGC8Y1R12 --source-mode gleif_live --env-file .env
 ```
 
-To fetch real GLEIF evidence and automatically store it in Snowflake, configure a
-named Snowflake CLI connection, then run:
+The preferred real-data path is the `.env` application setup above. Optional
+OAuth/CLI examples are in the [source integration register](docs/source-integration-status.md).
+The live registry branch now uses shared ingestion; demo fixtures remain local.
+Persistent case processing beyond raw evidence and source runs remains pending.
+
+To list source capabilities and ingest a real party independently of the UI:
 
 ```bash
-uv run python -m trust_signal.ingestion.raw_export \
-  --lei INR2EJN1ERAN0W5ZP974 \
-  --expected-name "Microsoft Corporation" \
-  --output-dir outputs/live/microsoft_gleif_automated \
-  --snowflake-connection trust_signal_dev
+uv run --locked --extra snowflake python -m trust_signal.ingestion.pipeline --list-sources --env-file .env
+uv run --locked --extra snowflake python -m trust_signal.ingestion.pipeline \
+  --requests examples/microsoft_identity.json --env-file .env \
+  --output outputs/live/microsoft-identity.json
 ```
 
-The command saves the exact response and provenance locally, inserts a raw observation,
-and verifies the stored metadata and JSON. A fresh retrieval gets a new observation ID;
-replaying a saved bundle keeps the original ID and skips a sequential duplicate:
-
-```bash
-uv run python -m trust_signal.ingestion.load \
-  --bundle-dir outputs/live/microsoft_gleif_automated \
-  --connection trust_signal_dev
-```
-
-This alternative storage mode uses the installed `snow` CLI and its local OAuth
-connection. The preferred `.env` application mode above uses a reusable Python
-session. Both are single-writer paths; the case graph and UI are not yet connected
-to persistent case processing.
+See [shared source ingestion](docs/source-ingestion.md) for the request format,
+coverage meanings, Snowflake inspection query, and agent usage.
 
 ## Validation
 
 ```bash
-uv run --locked pytest
-uv run --locked ruff check src tests app.py snowflake/app
+uv run --locked --extra dev --extra snowflake pytest
+uv run --locked --extra dev ruff check src tests app.py snowflake/app
 ```
 
 ## Design documents

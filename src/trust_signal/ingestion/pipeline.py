@@ -14,7 +14,7 @@ from trust_signal.connectors.registry import (
     SourceUnavailableError,
     default_registry,
 )
-from trust_signal.persistence.connection import SnowflakeSettings, application_stores
+from trust_signal.persistence.connection import application_stores
 from trust_signal.persistence.contracts import ObservationReceipt, ObservationStore
 from trust_signal.persistence.snowflake_cli import SnowflakeCliObservationStore
 from trust_signal.persistence.source_runs import (
@@ -33,6 +33,8 @@ class IngestionResult:
     receipts: list[ObservationReceipt] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
     error_category: str | None = None
+    error_stage: str | None = None
+    evidence: list[dict] = field(default_factory=list)
 
 
 class IngestionPipeline:
@@ -70,6 +72,8 @@ class IngestionPipeline:
                             or receipt.content_hash != observation.content_hash):
                         raise ValueError("Observation receipt is not verified.")
                     result.receipts.append(receipt)
+                    result.evidence.append({"observation_id": receipt.observation_id,
+                                            **observation.model_dump(mode="json", exclude={"raw_payload"})})
                     batch_ids.append(receipt.observation_id)
                 accepted += len(batch.records)
                 records.extend({**record, "observation_ids": batch_ids} for record in batch.records)
@@ -78,6 +82,7 @@ class IngestionPipeline:
         except Exception as exc:  # noqa: BLE001 - isolate sources, never disclose provider secrets
             result.coverage = "blocked" if isinstance(exc, SourceUnavailableError) else "failed"
             result.error_category = type(exc).__name__
+            result.error_stage = stage
         terminal_details = {**details, "stage": stage, "coverage": result.coverage,
                             "limitations": result.limitations,
                             "observation_ids": [r.observation_id for r in result.receipts]}
@@ -97,21 +102,27 @@ class IngestionPipeline:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--requests", required=True, help="JSON file containing a SourceRequest array")
-    connection = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument("--requests", help="JSON file containing a SourceRequest array")
+    parser.add_argument("--list-sources", action="store_true", help="List connector capabilities without opening Snowflake")
+    connection = parser.add_mutually_exclusive_group()
     connection.add_argument("--env-file", type=Path)
     connection.add_argument("--connection")
     connection.add_argument("--application-config", type=Path)
     parser.add_argument("--database")
     parser.add_argument("--output", type=Path, help="Save verified records and receipts as JSON")
     args = parser.parse_args()
+    if args.list_sources:
+        credentials = environment_config(args.env_file) if args.env_file else None
+        print(json.dumps(default_registry(credentials).catalog(), indent=2))
+        return 0
+    if not args.requests or not (args.env_file or args.connection or args.application_config):
+        parser.error("Ingestion requires --requests and one connection configuration.")
     requests = [SourceRequest.model_validate(value)
                 for value in json.loads(Path(args.requests).read_text(encoding="utf-8"))]
     config = args.application_config or args.env_file
     if config:
-        database = args.database or SnowflakeSettings.from_config(config).database
         credentials = environment_config(args.env_file) if args.env_file else None
-        with application_stores(config, database) as (observations, runs):
+        with application_stores(config, args.database) as (observations, runs):
             results = IngestionPipeline(default_registry(credentials), observations, runs).ingest_many(requests)
     else:
         args.database = args.database or "TRUST_SIGNAL_DEV"

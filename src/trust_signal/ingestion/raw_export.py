@@ -12,7 +12,7 @@ from trust_signal.connectors.base import EntityLookup
 from trust_signal.connectors.gleif import GleifAdapter
 from trust_signal.ingestion.load import record_receipt
 from trust_signal.ingestion.observation import prepare_observation
-from trust_signal.persistence.connection import SnowflakeSettings, application_stores
+from trust_signal.persistence.connection import application_stores
 from trust_signal.persistence.snowflake_cli import SnowflakeCliObservationStore
 from trust_signal.persistence.source_runs import (
     SnowflakeCliSourceRunStore,
@@ -137,13 +137,12 @@ def main() -> None:
     config = args.application_config or args.env_file
     if config:
         try:
-            database = args.database or SnowflakeSettings.from_config(config).database
             with (
-                application_stores(config, database) as (store, runs),
+                application_stores(config, args.database) as (store, runs),
                 GleifAdapter(timeout=20) as adapter,
             ):
                 result = ingest_tracked(adapter, args.lei, args.expected_name, args.output_dir,
-                                        database, store, runs)
+                                        store.database, store, runs)
         except (RuntimeError, ValueError, OSError, KeyError, TypeError):
             parser.exit(1, "Application ingestion failed. Check run history and retain any "
                         "exported bundle; no credentials were printed.\n")

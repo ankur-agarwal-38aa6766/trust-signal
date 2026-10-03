@@ -23,10 +23,10 @@ Source: [official GLEIF record](https://search.gleif.org/#/record/INR2EJN1ERAN0W
 
 | Priority | Source | Current code / access status | Implementation scope |
 |---|---|---|---|
-| 1 | GLEIF | Exact-LEI connector live-tested; raw export, automatic Snowflake insertion/read-back and sequential replay verified | Identity, then parent/child relationship endpoints and candidate search |
+| 1 | GLEIF | Exact lookup, name search and relationships stored and verified in Snowflake DEV; live registry agent uses shared ingestion | Name results remain candidates; parent exceptions and bounded child coverage preserved |
 | 2 | UK Companies House | Contract-tested; live verification blocked by missing `COMPANIES_HOUSE_API_KEY` | Company profile lookup by company number. Next: officers, filing history, insolvency and approved ownership fields |
-| 3 | Norway organization registry | Live lookup retrieved EQUINOR ASA, organization number `923609016`; normalized record confirmed | Organization-number lookup. Next: roles and allowed change endpoints |
-| 4 | UN consolidated sanctions list | Live XML retrieved; all 275 entity nodes parsed with unique identifiers and matching response hash | Entity listings, aliases, listed date and regime. Individuals are not parsed. Next: candidate matching and snapshot persistence |
+| 3 | Norway organization registry | EQUINOR ASA, organization number `923609016`, stored and read back with verified raw hash in Snowflake DEV | Organization-number lookup. Next: roles and allowed change endpoints |
+| 4 | UN consolidated sanctions list | Full XML stored and hash-verified in Snowflake DEV; all 275 entity nodes parsed | Entity listings, aliases, listed date and regime. Individuals are not parsed. Next: candidate matching |
 | 5 | SEC EDGAR | Planned in this checkout; declared user agent and access rules required | Relevant issuer submissions and filings; not a general company register |
 | 6 | News provider / official newsroom feeds | Provider not selected; connector not implemented | Publication dates, canonical article IDs, permitted excerpts, reporting classification |
 | 7 | OFAC / EU / UK / Australia sanctions | Planned; source-specific delivery and terms review | Designation measures, aliases, dates and validated entity matches |

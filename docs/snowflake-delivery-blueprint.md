@@ -68,7 +68,7 @@ Create separate `DEV`, `DEMO`, and later `PROD` databases or account-isolated en
 | `TRUST_SIGNAL_ANALYST` | Use the UI and read tenant-filtered serving views |
 | `TRUST_SIGNAL_REVIEWER` | Analyst access plus reviewed case-action writes |
 
-Start from [ACCOUNT_SETUP.sql.template](../snowflake/bootstrap/ACCOUNT_SETUP.sql.template), then apply narrowly reviewed grants after the schemas exist. Keep the Streamlit application and Cortex Agent away from `TRUST_SIGNAL_RAW`; they should use serving views and approved search services only. For any multi-tenant deployment, bind `TENANT_ID` from authenticated server-side identity and apply row-access policies before analyst roles receive access.
+Start from [the reviewed setup generator](portable-deployment.md), then apply narrowly reviewed grants for the additional planned roles after the schemas exist. Keep the Streamlit application and Cortex Agent away from `TRUST_SIGNAL_RAW`; they should use serving views and approved search services only. For any multi-tenant deployment, bind `TENANT_ID` from authenticated server-side identity and apply row-access policies before analyst roles receive access.
 
 ### Required account preflight
 

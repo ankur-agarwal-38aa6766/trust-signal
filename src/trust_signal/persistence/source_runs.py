@@ -1,4 +1,4 @@
-"""Portable run lifecycle contract and Snowflake CLI implementation."""
+"""Portable run lifecycle contract and transport-independent Snowflake repository."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ from typing import Protocol
 from uuid import uuid4
 
 from trust_signal.ingestion.observation import sql_literal
-from trust_signal.persistence.snowflake_cli import SnowflakeCliObservationStore
+from trust_signal.persistence.contracts import SqlExecutor
+from trust_signal.persistence.snowflake_cli import SnowflakeCliExecutor
 
 
 @dataclass(frozen=True)
@@ -44,12 +45,12 @@ def _details_sql(details: dict) -> str:
     return f"PARSE_JSON(BASE64_DECODE_STRING('{encoded}'))"
 
 
-class SnowflakeCliSourceRunStore:
-    def __init__(self, connection: str, database: str = "TRUST_SIGNAL_DEV", *, executor=None):
+class SnowflakeSourceRunStore:
+    def __init__(self, executor: SqlExecutor, database: str = "TRUST_SIGNAL_DEV"):
         if not re.fullmatch(r"[A-Z][A-Z0-9_]*", database):
             raise ValueError("Database must be an uppercase unquoted Snowflake identifier.")
         self.table = f"{database}.TRUST_SIGNAL_OPS.SOURCE_RUNS"
-        self.cli = SnowflakeCliObservationStore(connection, database, executor=executor)
+        self.executor = executor
 
     def _write(self, sql: str, run: SourceRun, expected: dict) -> None:
         verification = f"""SELECT SOURCE_RUN_ID, SOURCE_ID, CONNECTOR_VERSION,
@@ -57,7 +58,7 @@ RUN_STATUS, RECORDS_SEEN, RECORDS_ACCEPTED, ERROR_CATEGORY,
 COMPLETED_AT IS NOT NULL AS IS_COMPLETE, TO_JSON(DETAILS) AS DETAILS_JSON
 FROM {self.table} WHERE SOURCE_RUN_ID = {sql_literal(run.run_id)};"""
         try:
-            rows = self.cli.execute(sql + "\n" + verification)
+            rows = self.executor.execute(sql + "\n" + verification)
             stored = [row for row in rows if "SOURCE_RUN_ID" in row]
             expected = {**expected, "SOURCE_RUN_ID": run.run_id, "SOURCE_ID": run.source_id,
                         "CONNECTOR_VERSION": run.connector_version}
@@ -96,3 +97,12 @@ WHERE SOURCE_RUN_ID = {sql_literal(run.run_id)} AND RUN_STATUS = 'running';"""
         self._write(sql, run, {"RUN_STATUS": status, "RECORDS_SEEN": seen,
                               "RECORDS_ACCEPTED": accepted, "ERROR_CATEGORY": error_category,
                               "IS_COMPLETE": True, "DETAILS": details})
+
+
+class SnowflakeCliSourceRunStore(SnowflakeSourceRunStore):
+    """Compatibility wrapper for the optional named CLI transport."""
+
+    def __init__(self, connection: str, database: str = "TRUST_SIGNAL_DEV", *, executor=None):
+        client = executor if executor is not None else SnowflakeCliExecutor(connection, database)
+        super().__init__(client, database)
+        self.cli = client

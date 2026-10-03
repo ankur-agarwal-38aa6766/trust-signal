@@ -7,10 +7,8 @@ import re
 from typing import Protocol
 
 from trust_signal.ingestion.observation import sql_literal
-from trust_signal.persistence.snowflake_cli import (
-    ObservationWriteError,
-    SnowflakeCliObservationStore,
-)
+from trust_signal.persistence.contracts import ObservationWriteError, SqlExecutor
+from trust_signal.persistence.snowflake_cli import SnowflakeCliExecutor
 from trust_signal.resolution.evidence import stable_id
 from trust_signal.resolution.service import ResearchIdentity
 
@@ -20,11 +18,11 @@ class IdentityResearchStore(Protocol):
               research: ResearchIdentity) -> str: ...
 
 
-class SnowflakeCliIdentityResearchStore:
-    def __init__(self, connection: str, database: str = "TRUST_SIGNAL_DEV"):
+class SnowflakeIdentityResearchStore:
+    def __init__(self, executor: SqlExecutor, database: str = "TRUST_SIGNAL_DEV"):
         if not re.fullmatch(r"[A-Z][A-Z0-9_]*", database):
             raise ValueError("Invalid Snowflake database identifier.")
-        self.client = SnowflakeCliObservationStore(connection, database)
+        self.executor = executor
         self.database = database
 
     def store(self, tenant_id: str, case_id: str, input_version: int,
@@ -49,7 +47,7 @@ SELECT {identity}, {sql_literal(tenant_id)}, {sql_literal(case_id)}, {input_vers
 WHERE NOT EXISTS (SELECT 1 FROM {table} WHERE IDENTITY_DECISION_ID = {identity});
 SELECT IDENTITY_DECISION_ID, TENANT_ID, CASE_ID, INPUT_VERSION, TO_JSON(RESEARCH) AS RESEARCH_JSON
 FROM {table} WHERE IDENTITY_DECISION_ID = {identity};"""
-        rows = [r for r in self.client.execute(sql) if "IDENTITY_DECISION_ID" in r]
+        rows = [r for r in self.executor.execute(sql) if "IDENTITY_DECISION_ID" in r]
         if len(rows) != 1:
             raise ObservationWriteError("Expected one stored identity decision.")
         row = rows[0]
@@ -62,3 +60,12 @@ FROM {table} WHERE IDENTITY_DECISION_ID = {identity};"""
                 or stored_payload != payload):
             raise ObservationWriteError("Stored identity decision does not match the research.")
         return decision_id
+
+
+class SnowflakeCliIdentityResearchStore(SnowflakeIdentityResearchStore):
+    """Compatibility wrapper for the optional named CLI transport."""
+
+    def __init__(self, connection: str, database: str = "TRUST_SIGNAL_DEV"):
+        client = SnowflakeCliExecutor(connection, database)
+        super().__init__(client, database)
+        self.client = client

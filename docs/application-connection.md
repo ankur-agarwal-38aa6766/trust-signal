@@ -25,8 +25,9 @@ The role has database/schema/warehouse USAGE, SELECT/INSERT on
 (both with the `TRUST_SIGNAL_` schema prefix). It has no account administration,
 object creation, table deletion, or future-table grants. The identity-research
 tables are deliberately not granted yet. Administrative setup is captured in
-`snowflake/bootstrap/APPLICATION_IDENTITY.sql.template`; review it before use in
-another account and never replace an existing user's public key blindly.
+the `persistence.setup` generator; review its output before use in another account
+and never replace an existing user's public key blindly. Redundant hardcoded
+bootstrap templates have been removed.
 
 An encrypted RSA private key and random passphrase are stored separately in
 ignored `.secrets/` files, with directory permissions 0700 and file permissions
@@ -37,6 +38,15 @@ in a container image. Use a secret manager/mounted secrets for external producti
 workers, or the provided service identity when deploying inside Snowflake.
 
 ## Run locally
+
+For new credentials, use the guarded key generator in the main README. It refuses
+to overwrite even a partially present key set. The setup generator now verifies
+the public/private key match before producing SQL. Existing DEV credentials were
+preserved during cleanup; obsolete local identity SQL and temporary validation
+plans were removed. The main generated plan remains in `outputs/setup/snowflake.sql`.
+A legacy `.secrets/snowflake.toml` may remain for
+backwards compatibility, but `.env` is the canonical configuration and does not
+depend on it. `.secrets/` (plural) is the credential directory, not `.secret/`.
 
 From the repository root:
 
@@ -103,9 +113,11 @@ establish a new one. Failed writes are never automatically re-executed. Autocomm
 means earlier statements may have committed even if a later statement fails.
 Readback verification and replayable observation IDs remain the recovery tools.
 
-Existing repository class names retain `SnowflakeCli` for compatibility; their
-optional executor injection routes all SQL through the reusable session in
-application mode, without duplicating payload verification logic.
+Repositories are independent of their transport: `SnowflakeObservationStore`,
+`SnowflakeSourceRunStore` and `SnowflakeIdentityResearchStore` accept `SqlExecutor`.
+Application mode uses these repositories directly with a shared `SnowflakeSession`.
+Legacy `SnowflakeCli*` adapters remain thin compatibility wrappers. Settings live
+in `persistence/settings.py` and do not import the runtime connection manager.
 
 ## Live Verification
 

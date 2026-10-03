@@ -1,17 +1,12 @@
-"""Snowflake storage adapter using a named, locally authenticated CLI connection."""
+"""Optional CLI SQL transport and backwards-compatible observation adapter."""
 
 from __future__ import annotations
 
 import json
 import subprocess
 
-from trust_signal.connectors.base import SourceObservation
-from trust_signal.ingestion.observation import prepare_observation
-from trust_signal.persistence.contracts import ObservationReceipt
-
-
-class ObservationWriteError(RuntimeError):
-    """A write failed or its stored result could not be verified."""
+from trust_signal.persistence.contracts import ObservationWriteError, SqlExecutor
+from trust_signal.persistence.snowflake import SnowflakeObservationStore
 
 
 def _rows(value: object) -> list[dict]:
@@ -28,29 +23,18 @@ def _rows(value: object) -> list[dict]:
     return rows
 
 
-class SnowflakeCliObservationStore:
-    """Single-writer MVP adapter; callers retain the observation for safe replay."""
+class SnowflakeCliExecutor:
+    """Execute SQL with a named CLI connection; no repository-specific behavior."""
 
-    def __init__(
-        self, connection: str, database: str = "TRUST_SIGNAL_DEV", timeout: float = 180,
-        *, executor=None,
-    ):
+    def __init__(self, connection: str, database: str = "TRUST_SIGNAL_DEV", timeout: float = 180):
         if not connection or connection.startswith("-"):
             raise ValueError("A named Snowflake connection is required.")
         self.connection = connection
         self.database = database
         self.timeout = timeout
-        self.executor = executor
-
-    def store_observation(self, observation: SourceObservation) -> ObservationReceipt:
-        prepared = prepare_observation(observation, self.database)
-        rows = self.execute(prepared.insert_sql + "\n" + prepared.verify_sql)
-        return self._receipt(observation, prepared, rows)
 
     def execute(self, sql: str) -> list[dict]:
         """Execute SQL without exposing CLI authentication output in errors."""
-        if self.executor is not None:
-            return self.executor.execute(sql)
         command = [
             "snow", "sql", "--connection", self.connection,
             "--database", self.database, "--format", "JSON", "--silent", "--stdin",
@@ -84,34 +68,11 @@ class SnowflakeCliObservationStore:
             ) from exc
         return rows
 
-    def _receipt(self, observation, prepared, rows) -> ObservationReceipt:
-        stored = [row for row in rows if "OBSERVATION_ID" in row]
-        if len(stored) != 1:
-            raise ObservationWriteError("Expected exactly one stored observation; verification failed.")
-        row = stored[0]
-        expected = {
-            "OBSERVATION_ID": prepared.observation_id,
-            "SOURCE_ID": observation.source_id,
-            "SOURCE_RECORD_ID": observation.source_record_id,
-            "CANONICAL_URL": observation.canonical_url,
-            "CONNECTOR_VERSION": observation.connector_version,
-            "PAYLOAD_FORMAT": observation.payload_format,
-            "CONTENT_HASH": observation.content_hash,
-            "STORED_RESPONSE_HASH": observation.content_hash,
-        }
-        if any(row.get(key) != value for key, value in expected.items()):
-            raise ObservationWriteError("Stored observation metadata does not match the source.")
-        try:
-            payload = json.loads(row["PAYLOAD_JSON"])
-        except (KeyError, TypeError, json.JSONDecodeError) as exc:
-            raise ObservationWriteError("Stored payload could not be verified.") from exc
-        if payload != observation.raw_payload:
-            raise ObservationWriteError("Stored payload does not match the source response.")
-        inserted = [row.get("number of rows inserted") for row in rows
-                    if "number of rows inserted" in row]
-        if len(inserted) != 1 or type(inserted[0]) is not int or inserted[0] not in (0, 1):
-            raise ObservationWriteError("Snowflake insert count could not be verified.")
-        return ObservationReceipt(
-            prepared.observation_id, observation.source_id, observation.source_record_id,
-            observation.content_hash, inserted[0], len(stored),
-        )
+
+class SnowflakeCliObservationStore(SnowflakeObservationStore):
+    """Compatibility adapter; new application code uses SnowflakeObservationStore."""
+
+    def __init__(self, connection: str, database: str = "TRUST_SIGNAL_DEV", timeout: float = 180,
+                 *, executor: SqlExecutor | None = None):
+        super().__init__(executor if executor is not None else
+                         SnowflakeCliExecutor(connection, database, timeout), database)

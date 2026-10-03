@@ -24,6 +24,7 @@ snowflake = ["snowflake-connector-python[pandas]>=4.5,<5", "pyarrow>=14,<24"]
 trust-signal = "trust_signal.cli:main"
 trust-signal-fetch = "trust_signal.ingestion.raw_export:main"
 trust-signal-load = "trust_signal.ingestion.load:main"
+trust-signal-ingest = "trust_signal.ingestion.pipeline:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

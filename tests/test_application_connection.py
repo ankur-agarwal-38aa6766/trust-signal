@@ -128,7 +128,7 @@ def test_shared_executor_is_injected_into_both_stores(tmp_path, monkeypatch):
     settings = Mock(database="TRUST_SIGNAL_DEV")
     monkeypatch.setattr(SnowflakeSettings, "from_config", Mock(return_value=settings))
     with application_stores(tmp_path / "config", "TRUST_SIGNAL_DEV") as (observations, runs):
-        assert observations.executor is runs.cli.executor
+        assert observations.executor is runs.executor
 
 
 def test_observation_store_delegates_without_cli(monkeypatch):
