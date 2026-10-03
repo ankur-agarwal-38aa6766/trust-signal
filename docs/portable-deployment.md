@@ -44,7 +44,7 @@ This is a separate installation, not a data migration or automatic tenant switch
 .venv/bin/python -m trust_signal.persistence.setup \
   --env-file .env \
   --public-key-file .secrets/snowflake_key.pub \
-  --output outputs/setup/snowflake.sql
+  --output snowflake/build/setup.sql
 ```
 
 4. An authorized administrator reviews the SQL, target account, costs and current

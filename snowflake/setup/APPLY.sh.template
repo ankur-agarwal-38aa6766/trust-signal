@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+connection=${1:?Usage: sh apply.sh YOUR_ADMIN_CONNECTION}
+cd "$(dirname "$0")"

@@ -1,0 +1,15 @@
+[
+  {"source_id": "gleif_lei_api", "operation": "search", "value": "Microsoft Corporation", "max_pages": 1},
+  {"source_id": "gleif_lei_api", "operation": "relationships", "value": "INR2EJN1ERAN0W5ZP974", "max_pages": 1},
+  {"source_id": "gleif_lei_api", "operation": "relationships", "value": "335800E7D8TEYEZOH405", "max_pages": 1},
+  {"source_id": "no_bronnoysund_enhetsregisteret", "operation": "roles", "value": "923609016"},
+  {"source_id": "us_ofac_sdn", "operation": "snapshot"},
+  {"source_id": "uk_fcdo_sanctions", "operation": "snapshot"},
+  {"source_id": "eu_financial_sanctions", "operation": "snapshot"},
+  {"source_id": "au_dfat_sanctions", "operation": "snapshot"},
+  {"source_id": "worldbank_debarment", "operation": "snapshot"},
+  {"source_id": "uk_fca_newsroom", "operation": "snapshot"},
+  {"source_id": "uk_gazette_insolvency", "operation": "search", "value": "Carillion", "max_pages": 1},
+  {"source_id": "uk_find_case_law", "operation": "search", "value": "Microsoft", "max_pages": 1},
+  {"source_id": "gdelt_doc_news", "operation": "search", "value": "Microsoft"}
+]

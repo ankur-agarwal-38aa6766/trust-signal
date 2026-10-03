@@ -1,5 +1,6 @@
 """Deterministic comparison without discarding evidence or inferring identity."""
 
+import re
 from collections import defaultdict
 from datetime import UTC
 from typing import Protocol
@@ -46,8 +47,11 @@ class EvidenceAggregator:
                        "name:" + name_key(finding.subject))
             effective = (finding.effective_at.astimezone(UTC).isoformat()
                          if finding.effective_at else "")
+            event_time = (finding.event_at.astimezone(UTC).isoformat()
+                          if finding.event_at else "")
             key = (subject, finding.claim_type, finding.claim_key or "",
-                   finding.event_id or "", effective, finding.evidence_mode.value)
+                   finding.event_id or "", effective, event_time,
+                   finding.evidence_mode.value, finding.claim_cardinality)
             grouped[key].append(finding)
 
         result = AggregationResult(coverage=coverage)
@@ -57,22 +61,28 @@ class EvidenceAggregator:
             result.limitations.append("Some branches failed or were skipped; coverage is incomplete.")
         for key, members in sorted(grouped.items()):
             members.sort(key=lambda f: f.finding_id)
-            subject, claim_type, claim_key, event_id, effective, _mode = key
+            subject, claim_type, claim_key, event_id, effective, event_time, _mode, cardinality = key
             group_id = stable_id("group", *key)
             evidence = defaultdict(list)
             for item in members:
                 # Same response bytes and claim are repeated evidence, even across publishers.
-                fingerprint = ((item.content_hash, item.claim, item.claim_value,
-                                item.procedural_status) if item.content_hash else
+                value = item.claim_value if claim_key and item.claim_value is not None else item.claim
+                fingerprint = ((item.content_hash, value, item.procedural_status)
+                               if item.content_hash and re.fullmatch(r"sha256:[0-9a-f]{64}",
+                                                                     item.content_hash) else
                                ("finding", item.finding_id))
                 evidence[fingerprint].append(item.finding_id)
             duplicates = sorted(sorted(ids) for ids in evidence.values() if len(ids) > 1)
             values = {f.claim_value for f in members if f.claim_value is not None}
-            if claim_key and len(values) > 1:
+            if claim_key and cardinality == "single" and len(values) > 1:
                 relation = "potential_conflict"
             elif duplicates and len(evidence) == 1:
                 relation = "duplicate_evidence"
-            elif claim_key and len(members) > 1 and all(f.claim_value is not None for f in members):
+            elif claim_key and cardinality == "multiple" and len(values) > 1:
+                relation = "combined_members"
+            elif claim_key and len(values) == 1 and len(members) > 1 and all(
+                f.claim_value is not None for f in members
+            ):
                 relation = "consistent_claims"
             elif len({f.branch_id for f in members}) > 1:
                 relation = "same_claim_type_across_branches"
@@ -83,13 +93,18 @@ class EvidenceAggregator:
             group = ClaimGroup(
                 group_id=group_id, subject_key=subject, claim_type=claim_type,
                 claim_key=claim_key or None, event_id=event_id or None,
+                claim_cardinality=cardinality,
+                event_at=members[0].event_at if event_time else None,
                 effective_at=members[0].effective_at if effective else None,
                 finding_ids=[f.finding_id for f in members],
                 source_ids=sorted({f.source_id for f in members}),
+                branch_ids=sorted({f.branch_id for f in members}), values=sorted(values),
                 observation_ids=sorted({o for f in members for o in f.observation_ids}),
                 duplicate_sets=duplicates, distinct_evidence_count=len(evidence), relation=relation,
                 identity_confirmed=bool(identity and identity.status == "resolved" and
-                                        subject == "id:" + str(identity.selected_candidate_id)),
+                                        subject == "id:" + str(identity.selected_candidate_id) and
+                                        any(m.candidate.candidate_id == identity.selected_candidate_id
+                                            and m.eligible_for_attribution for m in identity.matches)),
             )
             result.groups.append(group)
             result.comparison_board.append(ComparisonItem(

@@ -1,0 +1,10 @@
+CREATE OR REPLACE TASK {ops}.{name} WAREHOUSE = {warehouse}
+USER_TASK_TIMEOUT_MS = 300000 AFTER {parents}
+WHEN SYSTEM$GET_PREDECESSOR_RETURN_VALUE('{predecessor}') != 'NONE' AS EXECUTE IMMEDIATE $$
+DECLARE run_id VARCHAR; output_id VARCHAR;
+BEGIN
+    run_id := (SELECT SYSTEM$GET_PREDECESSOR_RETURN_VALUE('{predecessor}'));
+    CALL {call} INTO :output_id;
+    CALL SYSTEM$SET_RETURN_VALUE(:output_id);
+END;
+$$;

@@ -21,14 +21,6 @@ from trust_signal.resolution.resolver import EntityResolver
 
 
 def gleif_registry_branch(request: CaseRequest, pipeline: IngestionPipeline | None = None) -> BranchResult:
-    if not request.party.lei:
-        return BranchResult(
-            branch_id="registry",
-            status=BranchStatus.SKIPPED,
-            sources_checked=["GLEIF exact-LEI lookup"],
-            limitations=["An LEI is required for the configured GLEIF lookup."],
-        )
-
     if pipeline is None:
         config = Path(".env")
         if not config.is_file():
@@ -39,12 +31,30 @@ def gleif_registry_branch(request: CaseRequest, pipeline: IngestionPipeline | No
             configured = IngestionPipeline(default_registry(environment_config(config)), observations, runs)
             return gleif_registry_branch(request, configured)
 
-    result = pipeline.ingest(SourceRequest(source_id="gleif_lei_api", operation="lookup", value=request.party.lei))
+    name_search = not request.party.lei
+    result = pipeline.ingest(SourceRequest(source_id="gleif_lei_api",
+                                          operation="search" if name_search else "lookup",
+                                          value=request.party.legal_name if name_search else request.party.lei))
     if result.error_category:
         return BranchResult(branch_id="registry", status=BranchStatus.FAILED,
-                            sources_checked=["GLEIF exact-LEI lookup"],
+                            sources_checked=["GLEIF name search" if name_search else "GLEIF exact-LEI lookup"],
                             error=f"Evidence ingestion failed: {result.error_category}",
                             limitations=[*result.limitations, f"Source coverage: {result.coverage}"])
+
+    if name_search:
+        candidates = {}
+        for record in result.records:
+            identifier = record["lei"]
+            candidates[identifier] = IdentityCandidate(
+                candidate_id=stable_id("candidate", "gleif_lei_api", identifier),
+                source_id="gleif_lei_api", source_record_id=identifier,
+                legal_name=record["legal_name"], lei=identifier,
+                jurisdiction=record.get("jurisdiction"), observation_ids=record["observation_ids"],
+            )
+        return BranchResult(branch_id="registry", status=BranchStatus.COMPLETED,
+                            identity_resolution=EntityResolver().resolve(request.party, list(candidates.values())),
+                            sources_checked=["GLEIF name search"],
+                            limitations=[*result.limitations, "Select and confirm an LEI before further research."])
 
     if not result.records:
         return BranchResult(
@@ -78,6 +88,7 @@ def gleif_registry_branch(request: CaseRequest, pipeline: IngestionPipeline | No
         claim_type="legal_identity_record",
         claim=claim,
         subject=entity.legal_name,
+        subject_id=resolution.selected_candidate_id,
         source_id=observation["source_id"],
         source_name="Global Legal Entity Identifier Foundation (GLEIF)",
         source_url=observation["canonical_url"],

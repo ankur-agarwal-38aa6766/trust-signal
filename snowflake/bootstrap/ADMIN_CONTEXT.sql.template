@@ -1,0 +1,2 @@
+USE ROLE {admin_role};
+USE DATABASE {database};

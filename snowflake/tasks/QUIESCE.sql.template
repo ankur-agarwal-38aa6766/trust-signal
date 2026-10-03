@@ -1,0 +1,15 @@
+USE ROLE {admin_role};
+USE DATABASE {database};
+USE WAREHOUSE {warehouse};
+ALTER TASK IF EXISTS {database}.TRUST_SIGNAL_OPS.TS_CLAIM SUSPEND;
+EXECUTE IMMEDIATE $$
+DECLARE
+    active_graph EXCEPTION (-20002, 'Workflow graph is active; wait for completion before deployment.');
+BEGIN
+    IF (EXISTS (SELECT 1 FROM TABLE(INFORMATION_SCHEMA.CURRENT_TASK_GRAPHS(
+        ROOT_TASK_NAME => 'TS_CLAIM', RESULT_LIMIT => 10000))
+        WHERE DATABASE_NAME = '{database}' AND SCHEMA_NAME = 'TRUST_SIGNAL_OPS')) THEN
+        RAISE active_graph;
+    END IF;
+END;
+$$;

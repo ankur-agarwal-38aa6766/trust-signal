@@ -49,5 +49,22 @@ TRUST_SIGNAL_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE_FILE=.secrets/password
     assert "CREATE DATABASE IF NOT EXISTS FRIEND_DB" in sql
     assert "CREATE USER IF NOT EXISTS FRIEND_SVC" in sql
     assert "PRIVATE KEY" not in sql
-    for version in range(1, 6):
+    assert "GRANT SELECT, INSERT ON TABLE FRIEND_DB.TRUST_SIGNAL_RAW.SOURCE_RESPONSE_CHUNKS TO ROLE FRIEND_ROLE" in sql
+    for version in range(1, 7):
         assert f"Migration: V{version:03}" in sql
+    initialization = tmp_path / "output/initialization"
+    complete = subprocess.run([
+        sys.executable, "-m", "trust_signal.persistence.initialize",
+        "--database", "FRIEND_DB", "--warehouse", "FRIEND_WH",
+        "--workflow-role", "FRIEND_WORKFLOW", "--without-external-access",
+        "--ingestion-env-file", str(config), "--public-key-file", str(public),
+        "--output-dir", str(initialization),
+    ], capture_output=True, text=True, env=environment, check=True, timeout=30)
+    assert json.loads(complete.stdout)["executed"] is False
+    identity = (initialization / "09_ingestion_identity.sql").read_text()
+    assert "CREATE USER IF NOT EXISTS FRIEND_SVC" in identity
+    assert "RSA_PUBLIC_KEY" in identity
+    assert "PRIVATE KEY" not in identity
+    assert "ALTER USER" not in identity
+    assert "GRANT ROLE FRIEND_ROLE TO USER FRIEND_SVC" in identity
+    assert "FRIEND_WORKFLOW TO USER FRIEND_SVC" not in identity

@@ -20,6 +20,10 @@ from the real-source Snowflake ingestion path below.
 
 ## Try in Your Snowflake Account
 
+For the **complete backend installation** (tables, views, permissions, procedures
+and suspended task graph), use [Snowflake initialization](docs/snowflake-initialization.md).
+The steps below remain the lightweight application-connection/raw-ingestion path.
+
 1. Clone and install the locked dependencies:
 
 ```bash
@@ -50,10 +54,10 @@ uv run --locked --extra snowflake python -m trust_signal.persistence.keys \
 ```bash
 uv run --locked --extra snowflake python -m trust_signal.persistence.setup \
   --env-file .env --public-key-file .secrets/snowflake_key.pub \
-  --output outputs/setup/snowflake.sql
+  --output snowflake/build/setup.sql
 ```
 
-Review `outputs/setup/snowflake.sql`, then execute it in **your account's**
+Review `snowflake/build/setup.sql`, then execute it in **your account's**
 Snowsight SQL editor using an authorized administrator role such as `ACCOUNTADMIN`.
 It creates the configured database/warehouse, application schemas and tables,
 service user and restricted ingestion grants. Do not reuse another installation's
@@ -101,12 +105,15 @@ To run the JSON command-line workflow with local fixtures:
 uv run trust-signal "Example Organization Ltd" --jurisdiction GB --registration-id 00000000
 ```
 
-For a live GLEIF lookup, provide the exact LEI and opt into live mode:
+For a live exact GLEIF lookup, provide the LEI and opt into live mode:
 
 ```bash
 uv run --locked --extra snowflake trust-signal "Bloomberg Finance L.P." \
   --lei 5493001KJTIIGC8Y1R12 --source-mode gleif_live --env-file .env
 ```
+
+Without `--lei`, live mode searches by name and returns persisted candidates for
+confirmation. It does not automatically select a candidate or calculate risk.
 
 The preferred real-data path is the `.env` application setup above. Optional
 OAuth/CLI examples are in the [source integration register](docs/source-integration-status.md).
@@ -134,6 +141,10 @@ uv run --locked --extra dev ruff check src tests app.py snowflake/app
 
 ## Design documents
 
+- [Snowflake initialization](docs/snowflake-initialization.md): complete repeatable onboarding, ordered SQL, migration checksums, service identity and safe activation boundaries.
+- [Source connectors](docs/source-connectors.md): expanded adapters, live verification boundaries, event labels, access/rights gates and sample requests.
+- [Snowflake workflow orchestration](docs/snowflake-orchestration.md): durable case/stage runs, reusable task graph, deployment artifacts, retries and recovery.
+- [Research aggregation](docs/aggregation.md): standalone aggregator, comparison rules, evidence deduplication, timeline and component integration.
 - [Shared source ingestion](docs/source-ingestion.md): registry, GLEIF discovery, verified JSON/XML storage, coverage and execution commands.
 - [Entity resolution and evidence](docs/entity-resolution-and-evidence.md): implemented identity rules, provenance contracts, component flow, Snowflake integration and remaining work.
 - [Source integration status](docs/source-integration-status.md): working versus planned connectors and the first real Microsoft/GLEIF raw-evidence load.

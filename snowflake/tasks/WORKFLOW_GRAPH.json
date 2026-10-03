@@ -1,0 +1,14 @@
+{
+  "root": "TS_CLAIM",
+  "finalizer": "TS_FINALIZE",
+  "children": [
+    {"name": "TS_IDENTITY", "parents": ["TS_CLAIM"], "predecessor": "TS_CLAIM", "procedure": "RESOLVE_WORKFLOW_IDENTITY"},
+    {"name": "TS_SANCTIONS", "parents": ["TS_IDENTITY"], "predecessor": "TS_IDENTITY", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "sanctions"},
+    {"name": "TS_OWNERSHIP", "parents": ["TS_IDENTITY"], "predecessor": "TS_IDENTITY", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "ownership"},
+    {"name": "TS_NEWS", "parents": ["TS_IDENTITY"], "predecessor": "TS_IDENTITY", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "news"},
+    {"name": "TS_LEGAL", "parents": ["TS_IDENTITY"], "predecessor": "TS_IDENTITY", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "legal"},
+    {"name": "TS_AGGREGATE", "parents": ["TS_IDENTITY", "TS_SANCTIONS", "TS_OWNERSHIP", "TS_NEWS", "TS_LEGAL"], "predecessor": "TS_IDENTITY", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "aggregate"},
+    {"name": "TS_VALIDATE", "parents": ["TS_AGGREGATE"], "predecessor": "TS_AGGREGATE", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "validate"},
+    {"name": "TS_ASSESS", "parents": ["TS_VALIDATE"], "predecessor": "TS_VALIDATE", "procedure": "EXECUTE_WORKFLOW_STAGE", "stage": "assess"}
+  ]
+}

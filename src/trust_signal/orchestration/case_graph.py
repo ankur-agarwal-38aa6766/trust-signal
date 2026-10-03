@@ -46,14 +46,12 @@ def identity_gate(state: WorkflowState) -> dict:
     has_identifier = bool(party.registration_id or party.lei)
     has_jurisdiction = bool(party.jurisdiction)
     gleif_lookup = state["request"].source_mode == SourceMode.GLEIF_LIVE
-    if (gleif_lookup and party.lei) or (not gleif_lookup and has_identifier and has_jurisdiction):
+    if gleif_lookup or (has_identifier and has_jurisdiction):
         return {"identity_status": "input_sufficient_for_lookup", "identity_reasons": []}
     missing = []
-    if gleif_lookup:
-        missing.append("lei")
-    elif not has_jurisdiction:
+    if not has_jurisdiction:
         missing.append("jurisdiction")
-    if not gleif_lookup and not has_identifier:
+    if not has_identifier:
         missing.append("registration_id_or_lei")
     return {"identity_status": "needs_more_information", "identity_reasons": missing}
 
@@ -117,6 +115,14 @@ def assess_case(state: WorkflowState) -> dict:
                 "assessment": assessment,
                 "status": CaseStatus.COMPLETED_WITH_GAPS,
             }
+
+        if not state["request"].party.lei:
+            return {"identity_status": "candidates_require_confirmation",
+                    "identity_resolution": registry_result.identity_resolution,
+                    "assessment": Assessment(risk_score=None, score_status="not_scored_candidate_discovery",
+                                             reasons=["Confirm the legal party using a returned LEI.", *limitations],
+                                             disposition=Disposition.REQUEST_DETAILS),
+                    "status": CaseStatus.NEEDS_MORE_INFORMATION}
 
         finding = next(
             (item for item in registry_result.findings if item.claim_type == "legal_identity_record"),

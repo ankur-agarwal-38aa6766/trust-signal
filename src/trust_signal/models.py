@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import Field, field_validator
@@ -74,6 +75,7 @@ class Finding(Contract):
     subject_id: str | None = None
     claim_key: str | None = None
     claim_value: str | None = None
+    claim_cardinality: Literal["single", "multiple", "unknown"] = "unknown"
     event_id: str | None = None
     event_at: datetime | None = None
     effective_at: datetime | None = None

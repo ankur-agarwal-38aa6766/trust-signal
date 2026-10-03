@@ -52,3 +52,20 @@ def test_candidate_identity_mismatch_is_rejected():
     node["id"] = "wrong"
     with GleifAdapter(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"data": [node]}))) as adapter, pytest.raises(SourceProtocolError):
         list(adapter.search_by_name("Example"))
+
+
+def test_parent_relationships_follow_singular_record_links():
+    payload = gleif_payload()
+    payload["data"]["relationships"] = {direction: {"links": {
+        "relationship-record": f"https://api.gleif.org/api/v1/lei-records/{LEI}/{direction}-relationship"}}
+        for direction in ("direct-parent", "ultimate-parent")}
+
+    def handler(request):
+        if request.url.path.endswith(LEI):
+            return httpx.Response(200, json=payload)
+        return httpx.Response(200, json={"data": {"id": "relationship_1", "type": "relationship-records",
+                                                 "attributes": {"relationship": {"status": "ACTIVE"}}}})
+
+    with GleifAdapter(transport=httpx.MockTransport(handler)) as adapter:
+        batches = list(adapter.fetch_relationships(LEI))
+    assert [batch.records[0]["record_type"] for batch in batches[1:3]] == ["relationship-records"] * 2

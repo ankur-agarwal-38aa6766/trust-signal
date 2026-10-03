@@ -1,0 +1,12 @@
+CREATE OR REPLACE PROCEDURE {ops}.{name}({arguments})
+RETURNS VARCHAR LANGUAGE PYTHON RUNTIME_VERSION = '3.11'
+PACKAGES = ({packages})
+IMPORTS = ('@{ops}.WORKFLOW_CODE/{bundle_name}')
+{network_clause}HANDLER = 'run' EXECUTE AS OWNER AS $$
+import os
+import sys
+sys.path.insert(0, os.path.join(sys._xoptions['snowflake_import_directory'], '{bundle_name}'))
+from trust_signal.orchestration import snowflake_runtime
+def run(session, {parameter_names}):
+    return snowflake_runtime.{handler}(session, {parameter_names})
+$$;

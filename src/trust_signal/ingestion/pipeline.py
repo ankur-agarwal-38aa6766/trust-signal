@@ -7,6 +7,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+import httpx
+
 from trust_signal.config import environment_config
 from trust_signal.connectors.registry import (
     SourceRegistry,
@@ -35,6 +37,8 @@ class IngestionResult:
     error_category: str | None = None
     error_stage: str | None = None
     evidence: list[dict] = field(default_factory=list)
+    http_status: int | None = None
+    retry_after: str | None = None
 
 
 class IngestionPipeline:
@@ -55,6 +59,9 @@ class IngestionPipeline:
         complete = True
         stage = "fetch"
         try:
+            if definition.paused_reason:
+                result.limitations.append(definition.paused_reason)
+                raise SourceUnavailableError("Source integration is paused.")
             for batch in definition.fetch(request):
                 seen += len(batch.records)
                 complete = complete and batch.complete
@@ -83,8 +90,14 @@ class IngestionPipeline:
             result.coverage = "blocked" if isinstance(exc, SourceUnavailableError) else "failed"
             result.error_category = type(exc).__name__
             result.error_stage = stage
+            if isinstance(exc, SourceUnavailableError) and definition.access_requirement:
+                result.limitations.append(definition.access_requirement)
+            if isinstance(exc, httpx.HTTPStatusError):
+                result.http_status = exc.response.status_code
+                result.retry_after = exc.response.headers.get("Retry-After")
         terminal_details = {**details, "stage": stage, "coverage": result.coverage,
                             "limitations": result.limitations,
+                            "http_status": result.http_status, "retry_after": result.retry_after,
                             "observation_ids": [r.observation_id for r in result.receipts]}
         if result.coverage == "failed" and stage == "storage":
             terminal_details["storage_outcome"] = "unknown"

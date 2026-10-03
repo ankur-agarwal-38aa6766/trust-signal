@@ -1,0 +1,3 @@
+USE ROLE {role};
+USE DATABASE {database};
+USE SCHEMA TRUST_SIGNAL_OPS;

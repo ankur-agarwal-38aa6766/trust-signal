@@ -1,0 +1,9 @@
+{
+  "schema_version": "1",
+  "party": {
+    "legal_name": "Microsoft Corporation",
+    "lei": "INR2EJN1ERAN0W5ZP974",
+    "jurisdiction": "US"
+  },
+  "source_mode": "gleif_live"
+}

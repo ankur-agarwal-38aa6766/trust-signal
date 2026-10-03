@@ -18,10 +18,14 @@ class ClaimGroup(Contract):
     subject_key: str
     claim_type: str
     claim_key: str | None = None
+    claim_cardinality: str = "unknown"
     event_id: str | None = None
+    event_at: datetime | None = None
     effective_at: datetime | None = None
     finding_ids: list[str]
     source_ids: list[str]
+    branch_ids: list[str] = Field(default_factory=list)
+    values: list[str] = Field(default_factory=list)
     observation_ids: list[str]
     duplicate_sets: list[list[str]] = Field(default_factory=list)
     distinct_evidence_count: int

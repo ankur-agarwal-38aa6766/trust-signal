@@ -8,7 +8,7 @@ configured page cap), Norway (one observation), and UN XML (one observation and
 all 275 entity listings). Raw body hashes, metadata, structured payloads, and
 terminal source-run history were read back successfully. The earlier CLI
 search/XML failures are superseded by this successful application run.
-Companies House remains blocked because its credential is absent; that gap was
+Companies House is now deliberately paused while access is unavailable; that gap was
 recorded in Snowflake. The complete local report is
 `outputs/live/shared-ingestion-application.json` (ignored by Git). V004 is applied
 in DEV. A live Microsoft case also resolved identity and produced a finding only
@@ -32,6 +32,9 @@ Apply `snowflake/migrations/V004__raw_response_retention.sql` in the selected
 development database after V001 and V003. V004 adds `RAW_RESPONSE_TEXT` without
 changing old rows. Old evidence requires its original bundle to be replayed;
 existing rows without raw text fail the stronger readback check until reconciled.
+Also apply V006 and configured runtime chunk-table grants for the expanded
+sanctions/XML/workbook sources. See [connector expansion](source-connectors.md)
+for current live-check results and operating boundaries.
 
 ```bash
 uv run --extra snowflake python -m trust_signal.ingestion.pipeline --list-sources --env-file .env
@@ -52,8 +55,9 @@ legacy application TOML. The application transport is the live-verified path.
 
 Requests are explicit: `examples/microsoft_identity.json` looks up one party.
 `examples/source_requests.json` exercises unrelated entities and a global sanctions
-dataset to validate connectors; it is not one unified party assessment. Supply
-`COMPANIES_HOUSE_API_KEY` in `.env` or the environment to enable UK requests.
+dataset to validate connectors; it is not one unified party assessment.
+Companies House remains paused even if `COMPANIES_HOUSE_API_KEY` is supplied;
+resuming it requires an explicit source-policy change after access is available.
 Credentials are never included in the catalog or source-run metadata.
 
 To run the actual live identity agent:
@@ -100,7 +104,7 @@ the storage platform. No alternative cloud storage adapter is implemented yet.
 ## Snowflake storage
 
 The configured warehouse executes ingestion and verification SQL.
-`TRUST_SIGNAL_RAW.SOURCE_OBSERVATIONS` holds the original response, structured
+`TRUST_SIGNAL_RAW.SOURCE_OBSERVATIONS` and `SOURCE_RESPONSE_CHUNKS` hold the original response, structured
 JSON or XML snapshot metadata, source URL, observed time, version, and SHA-256.
 `TRUST_SIGNAL_OPS.SOURCE_RUNS` holds request context, timestamps, counts, failure
 type, coverage, limitations, and persisted observation IDs. Cortex services are
@@ -166,8 +170,10 @@ An application worker may inject `IngestionPipeline` into `run_case`, or call
 `pipeline.ingest(SourceRequest(...))` directly from a specialist. Only returned
 verified records should enter agent reasoning; connectors belong to ingestion.
 Custom graph branches supplied by callers own their evidence discipline.
-The default case graph still requires an exact LEI; name search is available
-through ingestion and must pass identity resolution before adverse attribution.
+The default live graph now accepts a name-only request, returns persisted
+candidates and requests LEI confirmation before other specialist research.
+An exact confirmed LEI and consistent name remain required for identity resolution
+before adverse attribution.
 Sanctions matching, other specialist agents, and case-scoped persistence remain
 separate work packages.
 

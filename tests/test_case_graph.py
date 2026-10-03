@@ -22,17 +22,25 @@ def test_incomplete_identity_routes_to_request_details_without_research():
     assert result.branches == []
 
 
-def test_live_gleif_mode_requires_an_exact_lei():
+def test_live_gleif_name_discovery_requires_confirmation_before_specialists():
+    calls = []
+
+    def registry(_request):
+        calls.append("registry")
+        return BranchResult(branch_id="registry", status=BranchStatus.COMPLETED)
+
     result = run_case(
         CaseRequest(
             source_mode=SourceMode.GLEIF_LIVE,
             party={"legal_name": "Example Organization", "jurisdiction": "GB"},
-        )
+        ),
+        {"registry": registry, "events": lambda _request: calls.append("events")},
     )
 
     assert result.status == CaseStatus.NEEDS_MORE_INFORMATION
-    assert result.assessment.reasons == ["lei"]
-    assert result.branches == []
+    assert result.identity_status == "candidates_require_confirmation"
+    assert result.assessment.risk_score is None
+    assert calls == ["registry"]
 
 
 def test_live_identity_name_conflict_pauses_before_other_specialists():

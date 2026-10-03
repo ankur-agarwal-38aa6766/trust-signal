@@ -10,6 +10,7 @@ __pycache__/
 .streamlit/secrets.toml
 snowflake/.env
 outputs/
+snowflake/build/
 .secrets/
 *.p8
 *.pem

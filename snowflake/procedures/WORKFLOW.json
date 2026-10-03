@@ -1,0 +1,7 @@
+[
+  {"name": "CLAIM_WORKFLOW", "arguments": "GRAPH_RUN_ID VARCHAR", "handler": "claim", "parameters": "graph_run_id"},
+  {"name": "RESOLVE_WORKFLOW_IDENTITY", "arguments": "RUN_ID VARCHAR", "handler": "identity", "restricted_handler": "identity_unavailable", "parameters": "run_id", "network": true},
+  {"name": "EXECUTE_WORKFLOW_STAGE", "arguments": "RUN_ID VARCHAR, STAGE_NAME VARCHAR", "handler": "stage", "parameters": "run_id, stage_name"},
+  {"name": "FINALIZE_WORKFLOW", "arguments": "GRAPH_RUN_ID VARCHAR", "handler": "finalize", "parameters": "graph_run_id"},
+  {"name": "REQUEUE_WORKFLOW", "arguments": "RUN_ID VARCHAR", "handler": "requeue", "parameters": "run_id"}
+]

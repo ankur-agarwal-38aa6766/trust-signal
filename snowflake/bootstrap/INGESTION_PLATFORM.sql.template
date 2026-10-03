@@ -1,0 +1,8 @@
+-- REVIEW BEFORE EXECUTION. Target account: {parameter_0}
+-- Use an authorized administrator connection to this account only.
+-- Existing user keys are NOT overwritten. Verify their key and role before reuse.
+-- Existing warehouse settings are NOT changed. DDL may partially commit on failure.
+CREATE DATABASE IF NOT EXISTS {database};
+CREATE WAREHOUSE IF NOT EXISTS {warehouse} WAREHOUSE_SIZE = XSMALL
+    AUTO_SUSPEND = 60 AUTO_RESUME = TRUE INITIALLY_SUSPENDED = TRUE;
+USE DATABASE {database};

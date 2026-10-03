@@ -1,5 +1,7 @@
 """Snowflake observation repository, independent of its connection transport."""
 
+import base64
+import hashlib
 import json
 
 from trust_signal.connectors.base import SourceObservation
@@ -20,7 +22,32 @@ class SnowflakeObservationStore:
 
     def store_observation(self, observation: SourceObservation) -> ObservationReceipt:
         prepared = prepare_observation(observation, self.database)
-        rows = self.execute(prepared.insert_sql + "\n" + prepared.verify_sql)
+        if prepared.chunk_sql:
+            inserts = self.execute(prepared.insert_sql)
+            for statement in prepared.chunk_sql:
+                self.execute(statement)
+            chunks = self.execute(prepared.verify_chunks_sql)
+            if len(chunks) != len(prepared.chunk_sql):
+                raise ObservationWriteError("Raw response chunk count does not match.")
+            content = bytearray()
+            try:
+                for index, chunk in enumerate(chunks):
+                    piece = base64.b64decode(chunk["RAW_BYTES_BASE64"], validate=True)
+                    if chunk["CHUNK_INDEX"] != index or hashlib.sha256(piece).hexdigest() != chunk["CHUNK_HASH"]:
+                        raise ValueError("Chunk sequence or hash mismatch")
+                    content.extend(piece)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ObservationWriteError("Raw response chunks failed verification.") from exc
+            if bytes(content) != prepared.raw_bytes:
+                raise ObservationWriteError("Stored raw response bytes do not match.")
+            rows = inserts + self.execute(prepared.verify_sql)
+            for row in rows:
+                if "OBSERVATION_ID" in row:
+                    if row.get("RAW_CHUNK_COUNT") != len(chunks):
+                        raise ObservationWriteError("Stored chunk manifest does not match.")
+                    row["STORED_RESPONSE_HASH"] = "sha256:" + hashlib.sha256(content).hexdigest()
+        else:
+            rows = self.execute(prepared.insert_sql + "\n" + prepared.verify_sql)
         return self._receipt(observation, prepared, rows)
 
     def execute(self, sql: str) -> list[dict]:

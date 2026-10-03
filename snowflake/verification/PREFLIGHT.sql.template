@@ -1,0 +1,9 @@
+-- Read-only account checks. Confirm package versions and access before deployment.
+USE DATABASE {database};
+SELECT CURRENT_ACCOUNT(), CURRENT_ROLE(), CURRENT_DATABASE();
+SELECT PACKAGE_NAME, VERSION FROM INFORMATION_SCHEMA.PACKAGES
+WHERE LANGUAGE = 'python' AND PACKAGE_NAME IN
+('snowflake-snowpark-python', 'pydantic', 'httpx', 'python-dotenv', 'openpyxl', 'beautifulsoup4');
+SHOW WAREHOUSES LIKE '{warehouse}';
+SHOW INTEGRATIONS LIKE '{eai}';
+SHOW GRANTS TO ROLE {role};

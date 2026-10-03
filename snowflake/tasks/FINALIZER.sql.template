@@ -1,0 +1,4 @@
+CREATE OR REPLACE TASK {ops}.TS_FINALIZE WAREHOUSE = {warehouse}
+USER_TASK_TIMEOUT_MS = 60000 FINALIZE = {ops}.TS_CLAIM AS
+CALL {ops}.FINALIZE_WORKFLOW(SYSTEM$TASK_RUNTIME_INFO('CURRENT_TASK_GRAPH_RUN_GROUP_ID'));
+-- All tasks are created suspended. Activation is a separate reviewed operation.

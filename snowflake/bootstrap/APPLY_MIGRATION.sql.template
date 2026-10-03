@@ -1,0 +1,14 @@
+DECLARE
+    history_conflict EXCEPTION (-20001, 'Migration history conflict; do not edit applied migrations.');
+BEGIN
+    IF ((SELECT COUNT(*) FROM TRUST_SIGNAL_OPS.SCHEMA_MIGRATIONS WHERE VERSION = {version}) > 1
+        OR EXISTS (SELECT 1 FROM TRUST_SIGNAL_OPS.SCHEMA_MIGRATIONS WHERE VERSION = {version}
+                   AND (CHECKSUM != '{checksum}' OR FILENAME != '{filename}'))) THEN
+        RAISE history_conflict;
+    END IF;
+    IF (NOT EXISTS (SELECT 1 FROM TRUST_SIGNAL_OPS.SCHEMA_MIGRATIONS WHERE VERSION = {version})) THEN
+{statements}
+        INSERT INTO TRUST_SIGNAL_OPS.SCHEMA_MIGRATIONS (VERSION, FILENAME, CHECKSUM, APPLIED_AT, APPLIED_BY, APPLIED_ROLE)
+        SELECT {version}, '{filename}', '{checksum}', CURRENT_TIMESTAMP(), CURRENT_USER(), CURRENT_ROLE();
+    END IF;
+END;

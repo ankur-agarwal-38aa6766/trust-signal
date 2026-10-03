@@ -43,7 +43,8 @@ For new credentials, use the guarded key generator in the main README. It refuse
 to overwrite even a partially present key set. The setup generator now verifies
 the public/private key match before producing SQL. Existing DEV credentials were
 preserved during cleanup; obsolete local identity SQL and temporary validation
-plans were removed. The main generated plan remains in `outputs/setup/snowflake.sql`.
+plans were removed. New generated plans live in `snowflake/build/setup.sql`;
+versioned installation definitions live under `snowflake/`, not `outputs/`.
 A legacy `.secrets/snowflake.toml` may remain for
 backwards compatibility, but `.env` is the canonical configuration and does not
 depend on it. `.secrets/` (plural) is the credential directory, not `.secret/`.

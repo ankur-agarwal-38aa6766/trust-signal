@@ -23,8 +23,8 @@ def verify_source(source: str, output_dir: Path) -> dict:
     """Fetch through the actual adapter; never substitute fixture data."""
     result = {"source": source, "checked_at": datetime.now(UTC).isoformat()}
     key = os.environ.get("COMPANIES_HOUSE_API_KEY", "").strip()
-    if source == "companies_house" and not key:
-        return {**result, "status": "blocked", "reason": "COMPANIES_HOUSE_API_KEY is missing"}
+    if source == "companies_house":
+        return {**result, "status": "paused", "reason": "Companies House verification paused by project owner"}
     adapters = {
         "gleif": lambda: GleifAdapter(timeout=30),
         "norway": lambda: NorwayRegistryAdapter(timeout=30),

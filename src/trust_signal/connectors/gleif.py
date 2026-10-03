@@ -138,7 +138,8 @@ class GleifAdapter:
         relationships = lookup.observation.raw_payload["data"].get("relationships", {})
         for direction in ("direct-parent", "ultimate-parent", "direct-children"):
             links = relationships.get(direction, {}).get("links", {})
-            url = links.get("relationship-records") or links.get("reporting-exception")
+            url = (links.get("relationship-record") or links.get("relationship-records")
+                   or links.get("reporting-exception"))
             if not url:
                 yield SourceBatch(complete=False, limitations=[f"{direction}: no relationship or exception link."])
                 continue
