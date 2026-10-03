@@ -1,0 +1,20 @@
+-- Apply only after a source owner has approved the connector's terms, endpoint,
+-- retention, and egress need. Run with a role permitted to create integrations.
+-- This sample is for the unauthenticated GLEIF API. Keep authenticated connectors
+-- in separate network rules and integrations, with credentials in Snowflake Secrets.
+
+CREATE SCHEMA IF NOT EXISTS TRUST_SIGNAL_SECRETS;
+
+CREATE OR REPLACE NETWORK RULE TRUST_SIGNAL_SECRETS.GLEIF_EGRESS
+  MODE = EGRESS
+  TYPE = HOST_PORT
+  VALUE_LIST = ('api.gleif.org:443');
+
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION TRUST_SIGNAL_GLEIF_EAI
+  ALLOWED_NETWORK_RULES = (TRUST_SIGNAL_SECRETS.GLEIF_EGRESS)
+  ALLOWED_AUTHENTICATION_SECRETS = ()
+  ENABLED = TRUE;
+
+-- Attach this integration only to a stored procedure or UDF that needs GLEIF:
+-- EXTERNAL_ACCESS_INTEGRATIONS = (TRUST_SIGNAL_GLEIF_EAI)
+-- Never add wildcard hosts. Do not commit secret values or authentication tokens.

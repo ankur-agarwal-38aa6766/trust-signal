@@ -12,14 +12,18 @@ dependencies = [
   "httpx>=0.27,<1",
   "langgraph>=0.6,<2",
   "pydantic>=2.10,<3",
+  "python-dotenv>=1,<2",
   "streamlit>=1.50,<2",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+snowflake = ["snowflake-connector-python[pandas]>=4.5,<5", "pyarrow>=14,<24"]
 
 [project.scripts]
 trust-signal = "trust_signal.cli:main"
+trust-signal-fetch = "trust_signal.ingestion.raw_export:main"
+trust-signal-load = "trust_signal.ingestion.load:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

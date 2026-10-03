@@ -6,15 +6,14 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from trust_signal.domain.base import Contract
+from trust_signal.domain.identity import IdentityResolution
 
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
-
-
-class Contract(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
 class CaseStatus(StrEnum):
@@ -50,8 +49,11 @@ class PartyInput(Contract):
     legal_name: str = Field(min_length=2, max_length=240)
     jurisdiction: str | None = Field(default=None, min_length=2, max_length=8)
     registration_id: str | None = Field(default=None, max_length=120)
+    registration_authority: str | None = Field(default=None, max_length=120)
     lei: str | None = Field(default=None, min_length=20, max_length=20)
     website: str | None = Field(default=None, max_length=500)
+    registered_address: str | None = Field(default=None, max_length=1000)
+    aliases: list[str] = Field(default_factory=list)
 
 
 class CaseRequest(Contract):
@@ -88,6 +90,7 @@ class BranchResult(Contract):
     sources_checked: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     error: str | None = None
+    identity_resolution: IdentityResolution | None = None
     started_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime = Field(default_factory=utc_now)
 
@@ -112,6 +115,7 @@ class CaseResult(Contract):
     status: CaseStatus
     party: PartyInput
     identity_status: str
+    identity_resolution: IdentityResolution | None = None
     branches: list[BranchResult] = Field(default_factory=list)
     comparison_board: list[ComparisonItem] = Field(default_factory=list)
     assessment: Assessment

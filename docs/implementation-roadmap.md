@@ -2,6 +2,8 @@
 
 This roadmap turns the product design into a focused Snowflake COCO hackathon build and a credible path beyond the demo. Prioritize a complete evidence flow over superficial country counts.
 
+Use [the complete implementation plan](complete-implementation-plan.md) as the execution backlog. It refines these phases into work packages and supersedes earlier hosting guidance for the complete Cortex Agent UI: target Streamlit container runtime, with the existing warehouse-runtime intake app as an interim prototype.
+
 System-level service boundaries, security, operations, testing, cost, and launch gates are detailed in [system-design.md](system-design.md).
 
 ## 1. Hackathon demo target
@@ -26,8 +28,9 @@ Use actual API access the team has obtained. If a source requires credentials or
 - Implemented: Python package skeleton, Pydantic case/evidence contracts, LangGraph identity gate, parallel specialist fan-out/join, isolated branch failures, comparison board, and no-score analyst-review routing.
 - Implemented: local Streamlit case intake and explicit demo-fixture mode.
 - Implemented: GLEIF exact-LEI API lookup with response hash and source citation. A deterministic name mismatch pauses the case before other research branches; a match still requires analyst review.
-- Not implemented for the connector layer: durable raw-response persistence, name search, retry/checkpointing, or health scheduling.
-- Not implemented: Snowflake persistence, Cortex services, other live source adapters, scoring policy, authentication, or production deployment.
+- Implemented and live-verified: local OAuth CLI connection, standalone GLEIF raw-response export, automatic Snowflake insertion/read-back and sequential replay. The storage adapter checks the complete stored JSON and provenance against the captured response.
+- Automated GLEIF ingestion has a replaceable source-run persistence contract and Snowflake operations log. Name search, tracking across other connectors, retry/checkpoint scheduling, stale-run reconciliation and health scheduling remain pending. Additional adapter code and live validation are tracked in the source integration register.
+- Not implemented: durable case/assessment persistence, Cortex services, scoring policy, application authentication/tenant isolation, or production deployment. Local CLI authentication does not establish those application controls.
 
 ### Phase 0: Decide the demo and Snowflake account constraints
 

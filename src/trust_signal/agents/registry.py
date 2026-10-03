@@ -1,6 +1,7 @@
 """Registry research branches built on the source-adapter boundary."""
 
 from trust_signal.connectors.gleif import GleifAdapter
+from trust_signal.domain.identity import IdentityCandidate
 from trust_signal.models import (
     BranchResult,
     BranchStatus,
@@ -9,6 +10,8 @@ from trust_signal.models import (
     Finding,
     SourceMode,
 )
+from trust_signal.resolution.evidence import stable_id
+from trust_signal.resolution.resolver import EntityResolver
 
 
 def gleif_registry_branch(request: CaseRequest) -> BranchResult:
@@ -32,6 +35,13 @@ def gleif_registry_branch(request: CaseRequest) -> BranchResult:
         )
 
     entity = lookup.entity
+    resolution = EntityResolver().resolve(request.party, [IdentityCandidate(
+        candidate_id=stable_id("candidate", entity.source_id, lookup.observation.source_record_id),
+        source_id=entity.source_id, source_record_id=lookup.observation.source_record_id,
+        legal_name=entity.legal_name, lei=entity.lei,
+        registration_id=entity.registration_id, jurisdiction=entity.jurisdiction,
+        registered_address=entity.registered_address,
+    )])
     claim = (
         f"GLEIF returned this exact LEI record: {entity.legal_name}. "
         f"Jurisdiction: {entity.jurisdiction or 'not stated'}; "
@@ -59,6 +69,7 @@ def gleif_registry_branch(request: CaseRequest) -> BranchResult:
         branch_id="registry",
         status=BranchStatus.COMPLETED,
         findings=[finding],
+        identity_resolution=resolution,
         sources_checked=["GLEIF exact-LEI lookup"],
         limitations=["GLEIF coverage is limited to entities with an LEI."],
     )

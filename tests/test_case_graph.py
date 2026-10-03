@@ -101,6 +101,8 @@ def test_live_exact_lei_and_name_match_still_requires_review_without_full_covera
     result = run_case(request, {"registry": registry})
 
     assert result.identity_status == "resolved_by_exact_lei_and_name"
+    assert result.identity_resolution.status == "resolved"
+    assert "exact_lei" in result.identity_resolution.reason_codes
     assert result.status == CaseStatus.COMPLETED_WITH_GAPS
     assert result.assessment.disposition == Disposition.ANALYST_REVIEW
     assert result.assessment.risk_score is None
@@ -176,3 +178,34 @@ def test_branch_failure_is_recorded_without_aborting_other_branches():
     }
     failed = next(branch for branch in result.branches if branch.branch_id == "registry")
     assert "private service details" not in failed.error
+
+
+def test_live_identity_precedes_specialists_and_conflict_stops_fanout():
+    calls = []
+
+    def registry(request):
+        calls.append("registry")
+        return BranchResult(branch_id="registry", status=BranchStatus.COMPLETED, findings=[
+            Finding(branch_id="registry", claim_type="legal_identity_record", claim="Record",
+                    subject="Example Organization", source_id="gleif_lei_api", source_name="GLEIF",
+                    source_record_id=request.party.lei, evidence_mode=EvidenceMode.LIVE_SOURCE)
+        ])
+
+    def specialist(_request):
+        assert calls == ["registry"]
+        calls.append("events")
+        raise RuntimeError("Specialist failed")
+
+    branches = {"registry": registry, "events": specialist}
+    request = CaseRequest(source_mode=SourceMode.GLEIF_LIVE,
+                          party={"legal_name": "Wrong Organization", "lei": "0" * 20})
+    result = run_case(request, branches)
+    assert calls == ["registry"]
+    assert result.status == CaseStatus.NEEDS_MORE_INFORMATION
+    calls.clear()
+    request.party.legal_name = "Example Organization"
+    result = run_case(request, branches)
+    assert calls == ["registry", "events"]
+    assert result.identity_resolution.status == "resolved"
+    assert result.identity_status == "resolved_by_exact_lei_and_name"
+    assert result.status == CaseStatus.COMPLETED_WITH_GAPS

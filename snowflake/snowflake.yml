@@ -1,0 +1,18 @@
+definition_version: 2
+env:
+  database: TRUST_SIGNAL_DEV
+  serve_schema: TRUST_SIGNAL_SERVE
+  app_name: TRUST_SIGNAL_UI
+  app_warehouse: TRUST_SIGNAL_APP_WH
+entities:
+  trust_signal_ui:
+    type: streamlit
+    identifier:
+      name: <% ctx.env.app_name %>
+      database: <% ctx.env.database %>
+      schema: <% ctx.env.serve_schema %>
+    stage: TRUST_SIGNAL_UI_STAGE
+    query_warehouse: <% ctx.env.app_warehouse %>
+    main_file: streamlit_app.py
+    artifacts:
+      - app/streamlit_app.py

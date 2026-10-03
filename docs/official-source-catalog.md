@@ -3,6 +3,8 @@
 **Research checked:** 2026-10-02
 **Purpose:** Initial source discovery for TrustSignal design, not proof that connectors, commercial rights, or API credentials are available.
 
+For current implementation and live-test status, see [source-integration-status.md](source-integration-status.md). On 3 October 2026, real Microsoft GLEIF retrieval, automatic raw-observation insertion/read-back in Snowflake DEV, and sequential replay were verified.
+
 ## 1. How to read this catalog
 
 There is no single government database for all legal entities or adverse events worldwide. Company registration is generally maintained by national or subnational authorities. Even within a country, companies, nonprofits, financial institutions, charities, and public bodies may use different registers. Access ranges from public APIs and bulk downloads to authenticated, metered, paid, or browser-only portals.
@@ -21,7 +23,7 @@ Access labels:
 |---|---|---|
 | [GLEIF LEI data / API](https://www.gleif.org/en/lei-data/access-and-use-lei-data) | LEI legal-entity reference data and parent/child relationship reporting where entities have LEIs. | Global identifier network, not a complete register of every company. Coverage depends on LEI adoption and reported relationship data. Use as a strong cross-border key, not a universal identity oracle. |
 
-**Connector implementation:** exact-LEI record retrieval is implemented in `src/trust_signal/connectors/gleif.py` and was exercised against the public API on 2026-10-02. It does not perform name search, resolve aliases, or establish identity from an LEI alone. The live workflow compares the returned legal name to the submitted name and pauses on disagreement. Snowflake persistence and terms/retention review remain outstanding.
+**Connector implementation:** exact-LEI record retrieval is implemented in `src/trust_signal/connectors/gleif.py` and was exercised against the public API on 2026-10-02 and 2026-10-03. It does not perform name search, resolve aliases, or establish identity from an LEI alone. The live workflow compares the returned legal name to the submitted name and pauses on disagreement. Standalone raw-response persistence and sequential replay in Snowflake DEV are now verified; case persistence, source-run scheduling and production retention controls remain pending.
 | [EU e-Justice: Find a company / BRIS](https://e-justice.europa.eu/topics/registers-business-insolvency-land/business-registers-search-company-eu/general-information-find-company_en) | Search company records in EU, Iceland, Liechtenstein, and Norway; retrieve available national filings and legal-representative information. | Portal search obtains information in real time from participating registers, but available details/documents vary by register. Do not assume public bulk API access. |
 | [EU insolvency registers](https://webgate.ec.europa.eu/iri/index.html) | Search insolvency records from participating EU national registers. | Not all Member States are connected; Denmark is excluded from this interface and national search rules differ. Treat uncovered countries as gaps. |
 | [EU Beneficial Ownership Registers Interconnection System (BORIS)](https://e-justice.europa.eu/sitemap_en) | Discovery of beneficial-ownership register access points. | Access is governed by EU and national law and is not generally equivalent to unrestricted public bulk access. Verify current lawful access before integration. |
@@ -33,7 +35,7 @@ Access labels:
 
 | Jurisdiction | Official source | Available route / useful identifiers | Integration note |
 |---|---|---|---|
-| United States | [SEC EDGAR](https://www.sec.gov/edgar/sec-api-documentation) | Company submissions and XBRL APIs; CIK. | Retain as the existing listed-company/filing adapter. It is not a general US business register; state-level incorporation registries are separate. SEC requests require a declared user agent and rate-aware access. |
+| United States | [SEC EDGAR](https://www.sec.gov/edgar/sec-api-documentation) | Company submissions and XBRL APIs; CIK. | Planned adapter in this checkout. It is not a general US business register; state-level incorporation registries are separate. SEC requests require a declared user agent and rate-aware access. |
 | United Kingdom | [Companies House API](https://developer.company-information.service.gov.uk/overview/) | REST API for company records; company number. | API key/account registration is required. Official docs describe public data as live/real-time. Add filing-history and persons-with-significant-control routes subject to field-level access and lawful-use review. |
 | France | [INSEE SIRENE API and data](https://www.insee.fr/fr/information/3591226) | API query and bulk files; SIREN/SIRET. | INSEE describes free API and bulk data, daily updates, historical data and succession links. Legal data uses French identifiers and terminology; retain source-native values. |
 | Norway | [Brønnøysund Register Centre open-data API](https://data.brreg.no/enhetsregisteret/api/dokumentasjon/en/index.html) | REST search/detail, change/update endpoints, bulk downloads; organisation number. | Open-data API documents NLOD 2.0. Some person/role details require authorized access. Avoid collecting restricted personal identifiers. |

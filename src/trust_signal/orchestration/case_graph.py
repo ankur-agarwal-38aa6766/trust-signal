@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import unicodedata
 from datetime import UTC, datetime
 from operator import add
 from typing import Annotated, TypedDict
@@ -12,6 +11,7 @@ from langgraph.types import Send
 
 from trust_signal.agents.fixtures import Branch
 from trust_signal.agents.registry import branches_for_mode
+from trust_signal.domain.identity import IdentityCandidate, IdentityResolution, ResolutionStatus
 from trust_signal.models import (
     Assessment,
     BranchResult,
@@ -23,12 +23,15 @@ from trust_signal.models import (
     Disposition,
     SourceMode,
 )
+from trust_signal.resolution.evidence import stable_id
+from trust_signal.resolution.resolver import EntityResolver
 
 
 class WorkflowState(TypedDict, total=False):
     request: CaseRequest
     identity_status: str
     identity_reasons: list[str]
+    identity_resolution: IdentityResolution
     branches: Annotated[list[BranchResult], add]
     comparison_board: list[ComparisonItem]
     assessment: Assessment
@@ -92,7 +95,9 @@ def compare_branches(state: WorkflowState) -> dict:
 
 
 def assess_case(state: WorkflowState) -> dict:
-    if state["identity_status"] != "input_sufficient_for_lookup":
+    if state["identity_status"] not in (
+        "input_sufficient_for_lookup", "resolved_by_exact_lei_and_name"
+    ):
         assessment = Assessment(
             risk_score=None,
             score_status="not_scored_identity_incomplete",
@@ -105,9 +110,10 @@ def assess_case(state: WorkflowState) -> dict:
     limitations = [limitation for branch in branch_results for limitation in branch.limitations]
     failed = [branch.branch_id for branch in branch_results if branch.status == BranchStatus.FAILED]
     identity_status = state["identity_status"]
+    identity_resolution = state.get("identity_resolution")
     if state["request"].source_mode == SourceMode.GLEIF_LIVE:
         registry_result = next((branch for branch in branch_results if branch.branch_id == "registry"), None)
-        if failed:
+        if registry_result is None or registry_result.status == BranchStatus.FAILED:
             identity_status = "identity_lookup_failed"
             assessment = Assessment(
                 risk_score=None,
@@ -139,23 +145,37 @@ def assess_case(state: WorkflowState) -> dict:
                 "status": CaseStatus.NEEDS_MORE_INFORMATION,
             }
 
-        if _name_key(finding.subject) != _name_key(state["request"].party.legal_name):
+        resolution = registry_result.identity_resolution
+        if resolution is None:
+            # Compatibility for injected branches using the original Finding contract.
+            resolution = EntityResolver().resolve(state["request"].party, [IdentityCandidate(
+                candidate_id=stable_id("candidate", finding.source_id,
+                                       finding.source_record_id or finding.finding_id),
+                source_id=finding.source_id,
+                source_record_id=finding.source_record_id or finding.finding_id,
+                legal_name=finding.subject,
+                lei=finding.source_record_id if finding.source_id == "gleif_lei_api" else None,
+            )])
+        if resolution.status != ResolutionStatus.RESOLVED:
             identity_status = "identity_name_conflict"
             assessment = Assessment(
                 risk_score=None,
                 score_status="not_scored_identity_name_conflict",
                 reasons=[(
-                    f"Submitted name does not match GLEIF legal name {finding.subject!r}; "
+                    f"Submitted party conflicts with or cannot confirm GLEIF legal name {finding.subject!r}; "
                     "confirm the LEI belongs to this party or correct the submitted name."
-                )],
+                ), *resolution.reason_codes,
+                    *[reason for match in resolution.matches for reason in match.reason_codes]],
                 disposition=Disposition.REQUEST_DETAILS,
             )
             return {
                 "identity_status": identity_status,
+                "identity_resolution": resolution,
                 "assessment": assessment,
                 "status": CaseStatus.NEEDS_MORE_INFORMATION,
             }
         identity_status = "resolved_by_exact_lei_and_name"
+        identity_resolution = resolution
 
     assessment = Assessment(
         risk_score=None,
@@ -164,12 +184,10 @@ def assess_case(state: WorkflowState) -> dict:
         disposition=Disposition.ANALYST_REVIEW,
     )
     status = CaseStatus.COMPLETED_WITH_GAPS if limitations or failed else CaseStatus.COMPLETED
-    return {"identity_status": identity_status, "assessment": assessment, "status": status}
-
-
-def _name_key(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", value).casefold()
-    return "".join(character for character in normalized if character.isalnum())
+    result = {"identity_status": identity_status, "assessment": assessment, "status": status}
+    if identity_resolution is not None:
+        result["identity_resolution"] = identity_resolution
+    return result
 
 
 def _dispatch(branch_ids: list[str]):
@@ -181,10 +199,14 @@ def _dispatch(branch_ids: list[str]):
     return dispatch
 
 
-def build_case_graph(branches: dict[str, Branch] | None = None):
+def build_case_graph(branches: dict[str, Branch] | None = None,
+                     source_mode: SourceMode = SourceMode.DEMO_FIXTURES):
     branch_map = branches if branches is not None else branches_for_mode(SourceMode.DEMO_FIXTURES)
     if not branch_map:
         raise ValueError("At least one specialist branch is required.")
+    live_identity = source_mode == SourceMode.GLEIF_LIVE
+    if live_identity and "registry" not in branch_map:
+        raise ValueError("Live identity resolution requires a registry branch.")
     graph = StateGraph(WorkflowState)
     graph.add_node("identity_gate", identity_gate)
     graph.add_node("assess_incomplete", assess_case)
@@ -196,11 +218,28 @@ def build_case_graph(branches: dict[str, Branch] | None = None):
     graph.add_edge(START, "identity_gate")
     graph.add_conditional_edges(
         "identity_gate",
-        _dispatch(list(branch_map)),
-        ["assess_incomplete", *branch_map],
+        _dispatch(["registry"] if live_identity else list(branch_map)),
+        ["assess_incomplete", "registry"] if live_identity else ["assess_incomplete", *branch_map],
     )
     graph.add_edge("assess_incomplete", END)
-    graph.add_edge(list(branch_map), "compare")
+    if live_identity:
+        graph.add_node("resolve_identity", assess_case)
+        graph.add_edge("registry", "resolve_identity")
+        specialists = [name for name in branch_map if name != "registry"]
+
+        def dispatch_resolved(state: WorkflowState):
+            if state["identity_status"] != "resolved_by_exact_lei_and_name":
+                return END
+            if not specialists:
+                return "compare"
+            return [Send(name, {"request": state["request"]}) for name in specialists]
+
+        graph.add_conditional_edges("resolve_identity", dispatch_resolved,
+                                    [END, "compare", *specialists])
+        if specialists:
+            graph.add_edge(specialists, "compare")
+    else:
+        graph.add_edge(list(branch_map), "compare")
     graph.add_edge("compare", "assess")
     graph.add_edge("assess", END)
     return graph.compile()
@@ -208,12 +247,13 @@ def build_case_graph(branches: dict[str, Branch] | None = None):
 
 def run_case(request: CaseRequest, branches: dict[str, Branch] | None = None) -> CaseResult:
     branch_map = branches if branches is not None else branches_for_mode(request.source_mode)
-    state = build_case_graph(branch_map).invoke({"request": request})
+    state = build_case_graph(branch_map, request.source_mode).invoke({"request": request})
     return CaseResult(
         case_id=request.case_id,
         party=request.party,
         status=state["status"],
         identity_status=state["identity_status"],
+        identity_resolution=state.get("identity_resolution"),
         branches=state.get("branches", []),
         comparison_board=state.get("comparison_board", []),
         assessment=state["assessment"],

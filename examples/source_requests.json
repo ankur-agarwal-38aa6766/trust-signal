@@ -1,0 +1,7 @@
+[
+  {"source_id": "gleif_lei_api", "operation": "search", "value": "Microsoft Corporation"},
+  {"source_id": "gleif_lei_api", "operation": "relationships", "value": "INR2EJN1ERAN0W5ZP974", "max_pages": 1},
+  {"source_id": "no_bronnoysund_enhetsregisteret", "operation": "lookup", "value": "923609016"},
+  {"source_id": "un_security_council_consolidated_list", "operation": "snapshot"},
+  {"source_id": "uk_companies_house", "operation": "lookup", "value": "00445790"}
+]
