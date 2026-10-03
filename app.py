@@ -17,8 +17,9 @@ st.set_page_config(
 # Custom CSS to minimize Streamlit chrome and let the enterprise dashboard shine
 st.markdown("""
 <style>
+    /* Base container sizing */
     .block-container {
-        padding-top: 0rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
@@ -31,11 +32,103 @@ st.markdown("""
         width: 100% !important;
         border: none !important;
     }
+    
+    /* Expander card container */
     div[data-testid="stExpander"] {
         border: 1px solid #E2E8F0 !important;
         background-color: #FFFFFF !important;
-        margin: 0.5rem 1rem 0.5rem 1rem;
-        border-radius: 8px;
+        margin: 0.75rem 1.5rem 0.75rem 1.5rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+        overflow: hidden !important;
+    }
+    
+    /* Expander summary/header bar */
+    div[data-testid="stExpander"] > details > summary {
+        background-color: #F8FAFC !important;
+        color: #0F172A !important;
+        font-weight: 600 !important;
+        font-size: 0.875rem !important;
+        padding: 0.75rem 1.25rem !important;
+        border-bottom: 1px solid #E2E8F0 !important;
+        transition: background-color 0.2s ease !important;
+    }
+    div[data-testid="stExpander"] > details > summary:hover {
+        background-color: #F1F5F9 !important;
+        color: #4F46E5 !important;
+    }
+    div[data-testid="stExpander"] > details > summary svg {
+        fill: #64748B !important;
+    }
+    
+    /* Inner form container */
+    div[data-testid="stExpander"] > details > div {
+        background-color: #FFFFFF !important;
+        padding: 1.25rem !important;
+    }
+    div[data-testid="stForm"] {
+        border: none !important;
+        padding: 0 !important;
+    }
+    
+    /* All labels inside the form */
+    div[data-testid="stExpander"] label,
+    div[data-testid="stExpander"] label p,
+    div[data-testid="stExpander"] .stWidgetLabel p {
+        color: #1E293B !important;
+        font-weight: 600 !important;
+        font-size: 0.825rem !important;
+        letter-spacing: -0.01em !important;
+    }
+
+    /* Radio button options */
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        color: #334155 !important;
+        font-weight: 500 !important;
+        font-size: 0.85rem !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label p {
+        color: #334155 !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Inputs: background, border, text */
+    div[data-testid="stExpander"] input[type="text"] {
+        background-color: #F8FAFC !important;
+        color: #0F172A !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 0.75rem !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+    div[data-testid="stExpander"] input[type="text"]:focus {
+        background-color: #FFFFFF !important;
+        border-color: #4F46E5 !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+        outline: none !important;
+    }
+    div[data-testid="stExpander"] input::placeholder {
+        color: #94A3B8 !important;
+    }
+    
+    /* Submit button */
+    div[data-testid="stFormSubmitButton"] > button {
+        background-color: #0F172A !important;
+        color: #FFFFFF !important;
+        border: 1px solid #0F172A !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        padding: 0.55rem 1.5rem !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #4F46E5 !important;
+        border-color: #4F46E5 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2) !important;
     }
 </style>
 """, unsafe_allow_html=True)
