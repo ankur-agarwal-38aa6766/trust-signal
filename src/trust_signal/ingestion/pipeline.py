@@ -6,6 +6,7 @@ import argparse
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from threading import RLock
 
 import httpx
 
@@ -46,8 +47,14 @@ class IngestionPipeline:
         self.registry = registry
         self.observations = observations
         self.runs = runs
+        self._ingestion_lock = RLock()
 
     def ingest(self, request: SourceRequest) -> IngestionResult:
+        # Parallel specialists can share this pipeline, but not a concurrent SQL session.
+        with self._ingestion_lock:
+            return self._ingest(request)
+
+    def _ingest(self, request: SourceRequest) -> IngestionResult:
         definition = self.registry.get(request)
         run = SourceRun.create(definition.source_id, definition.connector_version)
         details = {"operation": request.operation, "requested_value": request.value,

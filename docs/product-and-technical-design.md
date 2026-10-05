@@ -1,5 +1,12 @@
 # TrustSignal Global Product and Technical Design
 
+> Direction update (2026-10-04): the hackathon scope is closed. This design is
+> retained for architectural context; hackathon deadlines, submissions and demo-only
+> defaults are superseded. Use [future scope](future-scope.md),
+> [project context](project-context.md) and [development backlog](development-backlog.md)
+> for current open-source decisions and actionable work. Dated implementation
+> claims and estimates below are not current verification or delivery commitments.
+
 **Status:** Target design for the worldwide Snowflake COCO hackathon project
 **Scope:** Legal-entity resolution, trusted-source monitoring, verified evidence, and explainable organization trust signals.
 

@@ -40,6 +40,44 @@ def test_releases_records_only_after_evidence_and_terminal_log_are_verified():
     assert [call[0] for call in calls.mock_calls] == ["store", "finish"]
 
 
+def test_parallel_specialists_share_one_serialized_ingestion_session():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    pipeline, request, _, _, batch = setup_pipeline()
+    first_entered, release_first, second_attempted, second_entered = (Event() for _ in range(4))
+    calls = []
+
+    def fetch(_):
+        calls.append("fetch")
+        if len(calls) == 1:
+            first_entered.set()
+            assert release_first.wait(timeout=3)
+        else:
+            second_entered.set()
+        yield batch
+
+    pipeline.registry = SourceRegistry([
+        SourceDefinition(request.source_id, "0.1.0", (), ("lookup",), fetch)])
+
+    def second():
+        second_attempted.set()
+        return pipeline.ingest(request)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(pipeline.ingest, request)
+        try:
+            assert first_entered.wait(timeout=3)
+            other = executor.submit(second)
+            assert second_attempted.wait(timeout=3)
+            assert not second_entered.wait(timeout=0.05)
+        finally:
+            release_first.set()
+        assert first.result(timeout=3).coverage == "available"
+        assert other.result(timeout=3).coverage == "available"
+    assert second_entered.is_set()
+
+
 def test_write_failure_records_gap_and_does_not_release_records():
     pipeline, request, store, runs, _ = setup_pipeline()
     store.store_observation.side_effect = RuntimeError("secret-token")

@@ -1,0 +1,1716 @@
+{
+  "schema_version": 1,
+  "baseline_date": "2026-10-04",
+  "baseline_head": "cd195d76aa6ce16aae54e5aa8d7164835982cd49",
+  "baseline_scope": "Current working tree, including uncommitted implementation; not a released/tagged baseline.",
+  "tasks": [
+    {
+      "id": "TS-001",
+      "priority": "P0",
+      "area": "Foundation",
+      "title": "Freeze and verify the implementation baseline",
+      "dependencies": [],
+      "external_blockers": [],
+      "initial_status": "Ready",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/2",
+      "context": "Capture the current implementation without accidentally omitting untracked specialists or including secrets.",
+      "paths": [
+        "README.md",
+        "src/trust_signal",
+        "tests"
+      ],
+      "acceptance_criteria": [
+        "Review all tracked/untracked changes and preserve unrelated user work.",
+        "Run locked dependency installation, full pytest and full lint; record versions and results.",
+        "With explicit approval, commit the agreed baseline and record its commit/tag in baseline.md; exclude credentials, outputs and private keys."
+      ],
+      "test_requirements": "Full unit suite, clean lint, secret scan and fresh-checkout reproduction.",
+      "issue_file": "docs/backlog/TS-001.md",
+      "github_issue_number": 2
+    },
+    {
+      "id": "TS-002",
+      "priority": "P0",
+      "area": "Orchestration",
+      "title": "Connect research stages to durable provider-managed workflows",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/3",
+      "context": "Close the gap between reusable research components and durable provider-managed DAG execution; no separately hosted always-running backend API is required.",
+      "paths": [
+        "src/trust_signal/orchestration/stages.py",
+        "src/trust_signal/persistence/workflow.py",
+        "src/trust_signal/cli.py"
+      ],
+      "acceptance_criteria": [
+        "A worker claims a queued case and injects all four enabled specialists using approved configuration.",
+        "Identity ambiguity stops fan-out; successful branch outputs survive process restart.",
+        "Use one execution owner per run and reconcile native workflow execution with application stage persistence without duplicate claims.",
+        "Verify the selected provider's approved source-access capabilities; failed, partial or unavailable stages remain visible.",
+        "Support a single-organization, single-worker installation first; use expiring claims and ownership tokens to reject stale-worker writes and recover interrupted cases.",
+        "Persist branch results idempotently; replay and accidental competing workers must not duplicate evidence, finalize twice or lose completed work.",
+        "Execute Python/SQL stages in the selected provider's managed runtime independently of the Streamlit session and developer laptop; local workers are optional development tools, not required deployment topology."
+      ],
+      "test_requirements": "Restart, competing worker, duplicate claim, timeout and partial-source integration tests.",
+      "issue_file": "docs/backlog/TS-002.md",
+      "github_issue_number": 3
+    },
+    {
+      "id": "TS-003",
+      "priority": "P0",
+      "area": "Ingestion",
+      "title": "Persist normalized evidence and add a cached research provider",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/4",
+      "context": "RAW/OPS persistence exists; normalized reusable research storage is still missing.",
+      "paths": [
+        "src/trust_signal/research/provider.py",
+        "src/trust_signal/screening/providers.py",
+        "snowflake/migrations"
+      ],
+      "acceptance_criteria": [
+        "Add reviewed migrations for normalized records with source/version/raw lineage and explicit publication/retrieval dates.",
+        "Implement cached providers using the existing provider contracts and immutable snapshots.",
+        "Replay a stored case without source HTTP requests; keep stale/partial/blocked scope explicit.",
+        "Failed normalization does not release partial or unverified records."
+      ],
+      "test_requirements": "Migration checksums, cache/replay equivalence, stale data and interrupted-write tests.",
+      "issue_file": "docs/backlog/TS-003.md",
+      "github_issue_number": 4
+    },
+    {
+      "id": "TS-004",
+      "priority": "P0",
+      "area": "Security",
+      "title": "Implement trusted application identity and tenant authorization",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/5",
+      "context": "Role-shaped context objects are not authentication or verified tenant membership.",
+      "paths": [
+        "src/trust_signal/domain/review.py",
+        "src/trust_signal/research/review.py",
+        "src/trust_signal/persistence"
+      ],
+      "acceptance_criteria": [
+        "Choose and document an approved identity provider and server-side tenant membership source.",
+        "Derive user, role and tenant from verified credentials, never editable request fields.",
+        "Authorize case/evidence reads and commands; reject cross-tenant and viewer writes.",
+        "Audit authorization failures without exposing keys, raw personal data or credentials."
+      ],
+      "test_requirements": "Forged token, cross-tenant ID, role escalation, revoked membership and service-identity tests.",
+      "issue_file": "docs/backlog/TS-004.md",
+      "github_issue_number": 5
+    },
+    {
+      "id": "TS-005",
+      "priority": "P1",
+      "area": "Intake",
+      "title": "Implement durable intake and clarification services",
+      "dependencies": [
+        "TS-002",
+        "TS-004"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/6",
+      "context": "Name discovery works but durable authorized intake and confirmation services are incomplete; HTTP endpoints are an optional transport, not a mandatory backend deployment.",
+      "paths": [
+        "src/trust_signal/models.py",
+        "src/trust_signal/resolution/resolver.py",
+        "src/trust_signal/persistence/workflow.py"
+      ],
+      "acceptance_criteria": [
+        "Persist authenticated intake with idempotency and bounded inputs.",
+        "Return unresolved candidates; require an explicit confirmed identifier before research.",
+        "Clarification/resubmission creates a linked new version without overwriting history.",
+        "Expose authorized case and stage status queries to Streamlit through application services; optional HTTP endpoints must retain the same contracts and authorization."
+      ],
+      "test_requirements": "Duplicate submission, same-name ambiguity, stale confirmation, invalid inputs and restart tests.",
+      "issue_file": "docs/backlog/TS-005.md",
+      "github_issue_number": 6
+    },
+    {
+      "id": "TS-006",
+      "priority": "P1",
+      "area": "Identity",
+      "title": "Implement scoped cross-registry identifier mapping",
+      "dependencies": [
+        "TS-003"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/7",
+      "context": "GLEIF-to-national-register linkage must not be confirmed by name or country alone.",
+      "paths": [
+        "src/trust_signal/agents/registry.py",
+        "src/trust_signal/agents/ownership.py",
+        "src/trust_signal/connectors/gleif.py",
+        "src/trust_signal/resolution"
+      ],
+      "acceptance_criteria": [
+        "Extract issuing-authority and registration identifiers with source locators.",
+        "Version verified mappings between GLEIF authorities and national registry scopes.",
+        "Confirm Norway linkage only through supported scoped identifiers and name checks.",
+        "Unknown mappings remain pending; preserve identifier zeros and jurisdiction subdivisions."
+      ],
+      "test_requirements": "Same-name entities, authority mismatch, leading zeros, changed names and ambiguous mapping tests.",
+      "issue_file": "docs/backlog/TS-006.md",
+      "github_issue_number": 7
+    },
+    {
+      "id": "TS-007",
+      "priority": "P2",
+      "area": "Identity",
+      "title": "Evaluate multilingual names and alias query planning",
+      "dependencies": [
+        "TS-006",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/8",
+      "context": "Current matching preserves Unicode but does not implement calibrated transliteration or translation.",
+      "paths": [
+        "src/trust_signal/resolution/resolver.py",
+        "src/trust_signal/agents/news.py",
+        "src/trust_signal/agents/legal.py"
+      ],
+      "acceptance_criteria": [
+        "Define language/transliteration policy with original names retained.",
+        "Bound alias query counts; never silently rewrite unsafe provider syntax.",
+        "Evaluate false positives/negatives on labeled multilingual and same-name cases.",
+        "No name-only match becomes authoritative identity confirmation."
+      ],
+      "test_requirements": "Multiscript, short alias, legal-suffix, transliteration collision and query-budget tests.",
+      "issue_file": "docs/backlog/TS-007.md",
+      "github_issue_number": 8
+    },
+    {
+      "id": "TS-008",
+      "priority": "P1",
+      "area": "Ingestion",
+      "title": "Add bounded source retries and interrupted-run recovery",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/9",
+      "context": "Failures are isolated but automatic backoff and reconciliation are missing.",
+      "paths": [
+        "src/trust_signal/connectors/http_source.py",
+        "src/trust_signal/ingestion/pipeline.py",
+        "src/trust_signal/persistence/source_runs.py"
+      ],
+      "acceptance_criteria": [
+        "Honor Retry-After with bounded attempts, jitter, deadlines and per-source budgets.",
+        "Distinguish fetch retry from unknown write outcome; reconcile stored evidence before rewriting.",
+        "Recover abandoned runs and incomplete chunks without claiming clean coverage.",
+        "Retain sanitized error categories and operational diagnostics."
+      ],
+      "test_requirements": "429, timeout, process kill, partial chunks, unknown commit and exhausted-budget tests.",
+      "issue_file": "docs/backlog/TS-008.md",
+      "github_issue_number": 9
+    },
+    {
+      "id": "TS-009",
+      "priority": "P1",
+      "area": "Ingestion",
+      "title": "Implement source snapshot refresh and publication freshness",
+      "dependencies": [
+        "TS-003",
+        "TS-008"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/10",
+      "context": "Retrieval freshness alone does not establish freshness of source publication.",
+      "paths": [
+        "src/trust_signal/connectors",
+        "src/trust_signal/domain",
+        "src/trust_signal/persistence"
+      ],
+      "acceptance_criteria": [
+        "Record source publication/version metadata where available and unknown where absent.",
+        "Use source-specific refresh policies with conditional requests where supported.",
+        "Generate snapshot diffs without treating removed records as acquittal or dismissal.",
+        "Verify schedules remain inactive until budget/access approval.",
+        "Use separate shared-source refresh and per-case research workflows; publish immutable snapshot references and reuse them across cases instead of downloading global lists for every case."
+      ],
+      "test_requirements": "Unchanged snapshot, stale publication, missing timestamp, removal and malformed-update tests.",
+      "issue_file": "docs/backlog/TS-009.md",
+      "github_issue_number": 10
+    },
+    {
+      "id": "TS-010",
+      "priority": "P2",
+      "area": "Sources",
+      "title": "Implement the next official national registry adapter",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/11",
+      "context": "Global company identity coverage currently relies mainly on GLEIF and Norway.",
+      "paths": [
+        "docs/official-source-catalog.md",
+        "src/trust_signal/connectors/registry.py",
+        "src/trust_signal/connectors"
+      ],
+      "acceptance_criteria": [
+        "Select one jurisdiction explicitly after official access, rights and coverage research.",
+        "Create a separate adapter with scoped identifiers, pagination and typed evidence.",
+        "Record credential/access blockers rather than enabling unsupported scraping.",
+        "Verify a real retrieval and Snowflake readback; create separate follow-up issues per additional jurisdiction."
+      ],
+      "test_requirements": "Fixtures, schema drift, access errors, identifiers and one approved live integration run.",
+      "issue_file": "docs/backlog/TS-010.md",
+      "github_issue_number": 11
+    },
+    {
+      "id": "TS-011",
+      "priority": "P1",
+      "area": "Sanctions",
+      "title": "Extract authoritative sanctions identifiers with locators",
+      "dependencies": [
+        "TS-003",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/12",
+      "context": "Current adapters usually yield name-only candidates; supported identifier fields are unpopulated.",
+      "paths": [
+        "src/trust_signal/connectors",
+        "src/trust_signal/screening/sanctions.py",
+        "src/trust_signal/domain/sanctions.py"
+      ],
+      "acceptance_criteria": [
+        "Extract only identifiers explicitly supplied by each authority with type/scope and source locators.",
+        "Keep list record IDs distinct from company registration IDs or LEIs.",
+        "Add separately scoped non-SDN coverage only after its source contract is documented.",
+        "Name-only and ambiguous identifiers remain review-required."
+      ],
+      "test_requirements": "Real format fixtures, identifier mismatch, wrong scope, aliases and live snapshot regression tests.",
+      "issue_file": "docs/backlog/TS-011.md",
+      "github_issue_number": 12
+    },
+    {
+      "id": "TS-012",
+      "priority": "P2",
+      "area": "Sanctions",
+      "title": "Implement bounded related-party sanctions evaluation",
+      "dependencies": [
+        "TS-011",
+        "TS-013",
+        "TS-018"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/13",
+      "context": "Direct organization matching does not cover ownership/control rules or directors.",
+      "paths": [
+        "src/trust_signal/agents/sanctions.py",
+        "src/trust_signal/agents/ownership.py",
+        "docs/sanctions-specialist.md"
+      ],
+      "acceptance_criteria": [
+        "Document reviewed jurisdiction-specific ownership/control rules and authoritative inputs.",
+        "Resolve related subjects independently with bounded traversal and cycle handling.",
+        "Do not infer percentage ownership from GLEIF consolidation or board membership.",
+        "Expose rule version, evidence, uncertainty and review requirements; no automatic legal verdict."
+      ],
+      "test_requirements": "Cycles, incomplete ownership, similarly named directors, threshold boundaries and conflicting evidence tests.",
+      "issue_file": "docs/backlog/TS-012.md",
+      "github_issue_number": 13
+    },
+    {
+      "id": "TS-013",
+      "priority": "P1",
+      "area": "Ownership",
+      "title": "Resolve related organizations and role holders independently",
+      "dependencies": [
+        "TS-006",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/14",
+      "context": "Current parent and role records do not uniquely resolve people or related organizations.",
+      "paths": [
+        "src/trust_signal/agents/ownership.py",
+        "src/trust_signal/domain/ownership.py",
+        "src/trust_signal/resolution"
+      ],
+      "acceptance_criteria": [
+        "Introduce explicit related-party candidate/decision contracts with separate evidence.",
+        "Keep accounting consolidation, shareholding, control and appointments distinct.",
+        "Add bounded traversal with independent identities and stable cross-snapshot role references.",
+        "Do not expose raw birth dates/national identifiers by default."
+      ],
+      "test_requirements": "Person-name collision, deregistered roles, organization holders, cycles and raw-privacy tests.",
+      "issue_file": "docs/backlog/TS-013.md",
+      "github_issue_number": 14
+    },
+    {
+      "id": "TS-014",
+      "priority": "P1",
+      "area": "Legal",
+      "title": "Retrieve permitted primary notices and verify procedural roles",
+      "dependencies": [
+        "TS-003",
+        "TS-018"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/15",
+      "context": "Official feed metadata is not sufficient to determine event party roles or outcomes.",
+      "paths": [
+        "src/trust_signal/agents/legal.py",
+        "src/trust_signal/connectors/feeds.py",
+        "src/trust_signal/connectors/worldbank.py"
+      ],
+      "acceptance_criteria": [
+        "Fetch only approved official documents under recorded usage/access rights and size limits.",
+        "Preserve party roles, procedural state, finality, dismissals, appeals and eligibility dates separately.",
+        "Link every interpretation to a cited span and source version.",
+        "Court access remains blocked without real permission; headlines cannot establish guilt."
+      ],
+      "test_requirements": "Petition/order/dismissal, claimant/defendant, appeal, expired eligibility and missing-span tests.",
+      "issue_file": "docs/backlog/TS-014.md",
+      "github_issue_number": 15
+    },
+    {
+      "id": "TS-015",
+      "priority": "P1",
+      "area": "News",
+      "title": "Document news rights and extend approved newsroom coverage",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/16",
+      "context": "GDELT provides bounded discovery, not licensed full text or verified publisher trust.",
+      "paths": [
+        "src/trust_signal/agents/news.py",
+        "src/trust_signal/connectors/gdelt.py",
+        "docs/official-source-catalog.md"
+      ],
+      "acceptance_criteria": [
+        "Record permitted storage/display/full-text rights for the selected production provider.",
+        "Add independently registered approved official newsroom adapters.",
+        "Version publisher policies without inheriting trust from a discovery provider.",
+        "Retain metadata-only mode when content rights are absent; bound queries and cost."
+      ],
+      "test_requirements": "Rights-denied, rate-limit, publisher mismatch, language metadata and official-feed schema tests.",
+      "issue_file": "docs/backlog/TS-015.md",
+      "github_issue_number": 16
+    },
+    {
+      "id": "TS-016",
+      "priority": "P1",
+      "area": "Aggregation",
+      "title": "Implement event clustering and syndication-aware comparisons",
+      "dependencies": [
+        "TS-003",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/17",
+      "context": "Exact response/title duplicate hints do not fully resolve repeated reports of one event.",
+      "paths": [
+        "src/trust_signal/aggregation/service.py",
+        "src/trust_signal/domain/aggregation.py"
+      ],
+      "acceptance_criteria": [
+        "Cluster only supported same-party events using source locators and documented rules.",
+        "Distinguish independent evidence from syndicated copies and repeated reporting.",
+        "Preserve all original findings and uncertain clusters for review.",
+        "Repeated articles cannot multiply evidence confidence or future score contributions."
+      ],
+      "test_requirements": "Same-title unrelated events, syndicated stories, differing parties and contradictory report tests.",
+      "issue_file": "docs/backlog/TS-016.md",
+      "github_issue_number": 17
+    },
+    {
+      "id": "TS-017",
+      "priority": "P1",
+      "area": "Aggregation",
+      "title": "Implement corrections and immutable case-version comparison",
+      "dependencies": [
+        "TS-003",
+        "TS-016"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/18",
+      "context": "Current snapshots do not reconcile updates, dismissals and corrections across case versions.",
+      "paths": [
+        "src/trust_signal/domain/aggregation.py",
+        "src/trust_signal/persistence/workflow.py",
+        "src/trust_signal/research/review.py"
+      ],
+      "acceptance_criteria": [
+        "Link later corrections/appeals to earlier events without deleting original evidence.",
+        "Create immutable new case/assessment versions with change explanations.",
+        "Preserve prior reviewer decisions against their original snapshot hashes.",
+        "Do not interpret source disappearance as a resolved legal outcome."
+      ],
+      "test_requirements": "Correction, appeal, dismissal, removed source and historical decision replay tests.",
+      "issue_file": "docs/backlog/TS-017.md",
+      "github_issue_number": 18
+    },
+    {
+      "id": "TS-018",
+      "priority": "P0",
+      "area": "Validation",
+      "title": "Implement evidence-backed claim review and eligibility",
+      "dependencies": [
+        "TS-003",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/19",
+      "context": "Structural validation exists but never establishes claim truth or scoring eligibility.",
+      "paths": [
+        "src/trust_signal/research/validation.py",
+        "src/trust_signal/domain/validation.py",
+        "src/trust_signal/domain/evidence.py"
+      ],
+      "acceptance_criteria": [
+        "Independently resolve stored observation/hash/locator references for reviewed claims.",
+        "Require grounded spans, party-role attribution and source-specific procedural interpretation.",
+        "Represent human/model review separately from structural checks; model output cannot self-approve.",
+        "Only explicitly approved claim types become eligible; missing/conflicting evidence abstains."
+      ],
+      "test_requirements": "Forged evidence, unsupported claim, missing citation, prompt injection and unresolved identity tests.",
+      "issue_file": "docs/backlog/TS-018.md",
+      "github_issue_number": 19
+    },
+    {
+      "id": "TS-019",
+      "priority": "P0",
+      "area": "Quality",
+      "title": "Create labeled identity/event evaluation and release gates",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/20",
+      "context": "Unit tests alone do not calibrate identity matching or adverse attribution quality.",
+      "paths": [
+        "tests",
+        "docs/sanctions-specialist.md",
+        "docs/legal-specialist.md",
+        "docs/news-specialist.md"
+      ],
+      "acceptance_criteria": [
+        "Create rights-safe labeled cases across jurisdictions/languages and same-name entities.",
+        "Measure attribution errors, missed relevance, unsupported conclusions and duplicate inflation.",
+        "Set reviewed acceptance thresholds and retain expected abstentions.",
+        "Run deterministic regression gates in CI and record provider/model versions."
+      ],
+      "test_requirements": "Separate training/development from evaluation examples; include adversarial and outage cases.",
+      "issue_file": "docs/backlog/TS-019.md",
+      "github_issue_number": 20
+    },
+    {
+      "id": "TS-020",
+      "priority": "P1",
+      "area": "Scoring",
+      "title": "Implement reviewed versioned scoring and routing policies",
+      "dependencies": [
+        "TS-018",
+        "TS-016",
+        "TS-017"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/21",
+      "context": "Assessments currently and intentionally have no risk score.",
+      "paths": [
+        "src/trust_signal/models.py",
+        "src/trust_signal/orchestration/stages.py",
+        "src/trust_signal/orchestration/case_graph.py"
+      ],
+      "acceptance_criteria": [
+        "Add a standalone policy loader/engine using approved eligible findings only.",
+        "Separate risk dimensions, evidence confidence and coverage; missing data never means low risk.",
+        "Persist policy/version/contributions and deterministic routing explanations.",
+        "Deduplicate event contributions; unconfigured or insufficient evidence remains unscored."
+      ],
+      "test_requirements": "Policy boundaries, duplicate events, dismissals, missing coverage and replay reproducibility tests.",
+      "issue_file": "docs/backlog/TS-020.md",
+      "github_issue_number": 21
+    },
+    {
+      "id": "TS-021",
+      "priority": "P1",
+      "area": "Review",
+      "title": "Implement provider-portable review persistence and versioned snapshots",
+      "dependencies": [
+        "TS-003",
+        "TS-004"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/22",
+      "context": "The current transactional review adapter is SQLite development storage.",
+      "paths": [
+        "src/trust_signal/research/review.py",
+        "src/trust_signal/domain/review.py",
+        "snowflake/migrations"
+      ],
+      "acceptance_criteria": [
+        "Implement ReviewStore through the selected provider adapter with reviewed permissions and atomic/version-safe commands; preserve Snowflake as one implementation, not a mandatory dependency.",
+        "Preserve request idempotency, snapshot immutability, evidence references and supervisor reopen.",
+        "Support new research versions while retaining historical decisions.",
+        "Do not grant service owners blanket reviewer authority or describe the audit as tamper-proof without controls."
+      ],
+      "test_requirements": "Concurrency, duplicate request, stale snapshot, unauthorized write and durable readback tests.",
+      "issue_file": "docs/backlog/TS-021.md",
+      "github_issue_number": 22
+    },
+    {
+      "id": "TS-022",
+      "priority": "P1",
+      "area": "Review",
+      "title": "Expose authenticated review commands and operational actions",
+      "dependencies": [
+        "TS-021",
+        "TS-005"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/23",
+      "context": "ReviewService is not an authenticated API or notification/business-action system.",
+      "paths": [
+        "src/trust_signal/research/review.py",
+        "src/trust_signal/domain/review.py"
+      ],
+      "acceptance_criteria": [
+        "Expose authorized review/history/request-details/reject/reopen endpoints using trusted actor context.",
+        "Add separately specified approval/monitoring commands with reviewer permissions and rationale.",
+        "Queue notifications/actions through an idempotent outbox rather than executing before decision commit.",
+        "Reject client-supplied tenants, roles and forged case snapshots."
+      ],
+      "test_requirements": "Viewer, cross-tenant, double-click, stale version, failed notification and supervisor tests.",
+      "issue_file": "docs/backlog/TS-022.md",
+      "github_issue_number": 23
+    },
+    {
+      "id": "TS-023",
+      "priority": "P1",
+      "area": "AI",
+      "title": "Integrate governed model extraction as reviewable candidates",
+      "dependencies": [
+        "TS-018",
+        "TS-025"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/24",
+      "context": "Governed extraction is a replaceable model-provider integration; Cortex is an optional provider implementation, not a required product runtime.",
+      "paths": [
+        "src/trust_signal/domain/evidence.py",
+        "src/trust_signal/research",
+        "docs/snowflake-delivery-blueprint.md"
+      ],
+      "acceptance_criteria": [
+        "Verify approved account capability, model allowlist, residency and inference budget before calls.",
+        "Use permitted excerpts with structured output, citations, model/prompt versions and limits.",
+        "Treat document text as untrusted data; extracted candidates pass the normal validation path.",
+        "Model failures leave readable gaps; no inferred identifier or unsupported verdict is finalized.",
+        "Declare model/extraction capabilities independently of workflow/storage providers; support configured deterministic research without an LLM and never silently substitute a model provider."
+      ],
+      "test_requirements": "Structured-output failure, prompt injection, missing citations, budget exhaustion and grounded evaluation tests.",
+      "issue_file": "docs/backlog/TS-023.md",
+      "github_issue_number": 24
+    },
+    {
+      "id": "TS-024",
+      "priority": "P2",
+      "area": "AI",
+      "title": "Implement case-scoped retrieval, semantic tools and research agents",
+      "dependencies": [
+        "TS-023",
+        "TS-004",
+        "TS-003"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/25",
+      "context": "Retrieval and agent tools are optional provider adapters over authorized evidence; no Snowflake trial workaround or hosted CoCo feasibility is required.",
+      "paths": [
+        "snowflake",
+        "docs/product-and-technical-design.md",
+        "docs/snowflake-delivery-blueprint.md"
+      ],
+      "acceptance_criteria": [
+        "Deploy reviewed search/semantic definitions over approved case facts and excerpts.",
+        "Enforce tenant/case authorization before retrieval and tool execution.",
+        "Return traceable citations and abstain on unsupported questions.",
+        "Record tool/cost traces and verify account/runtime compatibility without assuming entitlement.",
+        "For a single-organization installation, restrict direct Search service access and tool invocation to approved installation roles; test unauthorized account roles as well as application callers.",
+        "If multi-tenant support is enabled later, prove direct retrieval isolation separately from application filters; shared indexes must not bypass case/tenant authorization.",
+        "Select retrieval and agent tools by supported provider capabilities; web discovery remains distinct from complete verified connector responses, and model-selected tools must preserve identity and provenance gates."
+      ],
+      "test_requirements": "Cross-tenant retrieval, invalid citation, unsupported question and bounded-cost live QA tests.",
+      "issue_file": "docs/backlog/TS-024.md",
+      "github_issue_number": 25
+    },
+    {
+      "id": "TS-025",
+      "priority": "P0",
+      "area": "Governance",
+      "title": "Complete approved security, residency and cost readiness",
+      "dependencies": [],
+      "external_blockers": [],
+      "initial_status": "Ready",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/26",
+      "context": "Provider-independent permissions, residency, quotas and cost controls are required for managed workflow use; Snowflake trial/billing troubleshooting and separately hosted backend deployment are out of scope.",
+      "paths": [
+        "docs/deployment-readiness.md",
+        "docs/ingestion-access-hardening.md",
+        "snowflake/operations"
+      ],
+      "acceptance_criteria": [
+        "Recheck effective roles, approved managed task runtime and source-access capabilities for the selected provider profile.",
+        "Resolve/document residual inherited access and production isolation boundaries.",
+        "Approve configured model geography, allowed models and provider workflow/compute budgets; verify alert delivery.",
+        "Keep schedules suspended until readiness approval; account-wide changes require owner approval.",
+        "Provide operator-controlled preflight, start, pause and resume procedures for a self-hosted installation; automatic processing is opt-in, not enabled by setup.",
+        "Verify one bounded scheduled case, emergency suspension and recovery/rollback without losing queued cases or duplicating completed results; record explicit activation approval."
+      ],
+      "test_requirements": "Positive/negative access tests, budget/alert evidence and reviewed preflight report.",
+      "issue_file": "docs/backlog/TS-025.md",
+      "github_issue_number": 26
+    },
+    {
+      "id": "TS-026",
+      "priority": "P0",
+      "area": "Integration",
+      "title": "Verify full live cases across two jurisdictions",
+      "dependencies": [
+        "TS-002",
+        "TS-003",
+        "TS-008"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/27",
+      "context": "Connector checks and fixture specialist tests are not an integrated live case proof.",
+      "paths": [
+        "tests",
+        "examples",
+        "docs/source-integration-status.md"
+      ],
+      "acceptance_criteria": [
+        "Run approved bounded live cases with at least three operational specialist lanes.",
+        "Verify RAW/OPS plus durable case/stage/normalized output readback and citations.",
+        "Demonstrate identity ambiguity, one source outage and replay without fresh fetching.",
+        "Record live versus captured-replay evidence and every coverage gap; never enable blocked sources to pass a demo."
+      ],
+      "test_requirements": "Two-jurisdiction run, restart/replay, outage and exact evidence lineage verification.",
+      "issue_file": "docs/backlog/TS-026.md",
+      "github_issue_number": 27
+    },
+    {
+      "id": "TS-027",
+      "priority": "P2",
+      "area": "UI",
+      "title": "Build the connected analyst intake-to-review UI",
+      "dependencies": [
+        "TS-005",
+        "TS-022",
+        "TS-020"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/28",
+      "context": "The UI is deliberately deferred; prototype/design are not connected product completion.",
+      "paths": [
+        "app.py",
+        "docs/figma-design-handoff.md",
+        "docs/figma-design-prompt.md"
+      ],
+      "acceptance_criteria": [
+        "Reuse the agreed design and authorized application services for case/review commands; a separate HTTP API deployment is optional.",
+        "Support intake, candidate confirmation, stages, comparison, citations, clarification and review history.",
+        "Display unscored/pending/blocked states honestly; protect raw personal data.",
+        "Refresh/navigation preserves case state; no UI-only decisions or synthetic live fallbacks.",
+        "Trigger approved workflows through provider-independent application services and reconnect to persisted case/run IDs after browser closure; a separate always-running HTTP backend is optional, but deployed task execution is required.",
+        "Show the DAG, parallel branches, numbered attempts, durations, sanitized errors and terminal outputs; distinguish execution success, source coverage and business assessment, and use durable workflow projections rather than unpublished legacy tables."
+      ],
+      "test_requirements": "Desktop/mobile browser flow, long multilingual names, failures, stale review and authorization tests.",
+      "issue_file": "docs/backlog/TS-027.md",
+      "github_issue_number": 28
+    },
+    {
+      "id": "TS-028",
+      "priority": "P2",
+      "area": "Monitoring",
+      "title": "Implement incremental monitoring and idempotent notifications",
+      "dependencies": [
+        "TS-009",
+        "TS-017",
+        "TS-022"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/29",
+      "context": "There are no operational watchlists, monitored refreshes or notification delivery.",
+      "paths": [
+        "src/trust_signal/domain/workflow.py",
+        "src/trust_signal/persistence/workflow.py",
+        "snowflake/tasks"
+      ],
+      "acceptance_criteria": [
+        "Store authorized watchlists and source-specific refresh schedules with budgets.",
+        "Upstream changes create new immutable evidence/case versions, not overwrite reviews.",
+        "Use one effective outbox event per change and expose stale-source alerts.",
+        "Verify disabled subscriptions, retries and opt-out before scheduling."
+      ],
+      "test_requirements": "Unchanged feed, duplicate update, process restart, failed notification and unsubscribe tests.",
+      "issue_file": "docs/backlog/TS-028.md",
+      "github_issue_number": 29
+    },
+    {
+      "id": "TS-029",
+      "priority": "P1",
+      "area": "Delivery",
+      "title": "Automate CI and reproducible provider-profile installation checks",
+      "dependencies": [
+        "TS-001",
+        "TS-025"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/30",
+      "context": "Reproducible setup of the selected UI, procedures/jobs and managed workflows needs verification; no separate backend-service hosting project is required.",
+      "paths": [
+        "pyproject.toml",
+        "uv.lock",
+        "snowflake",
+        "docs/snowflake-initialization.md"
+      ],
+      "acceptance_criteria": [
+        "Add CI for locked install, tests, lint, backlog checks and secret scanning.",
+        "Verify migrations/deployment generation on clean checkout and an approved fresh environment.",
+        "Document health checks, rollback/reconciliation and recovery runbooks.",
+        "Publish no credential-containing artifacts; cloud deployment/spend require explicit approval."
+      ],
+      "test_requirements": "Clean checkout, migration drift, dependency lock, secret fixtures and approved deployment smoke.",
+      "issue_file": "docs/backlog/TS-029.md",
+      "github_issue_number": 30
+    },
+    {
+      "id": "TS-030",
+      "priority": "P1",
+      "area": "Documentation",
+      "title": "Reconcile current README and implementation status documents",
+      "dependencies": [],
+      "external_blockers": [],
+      "initial_status": "Ready",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/31",
+      "context": "Some historical documents still describe implemented specialists as missing.",
+      "paths": [
+        "README.md",
+        "docs/source-connectors.md",
+        "docs/source-integration-status.md",
+        "docs/complete-implementation-plan.md"
+      ],
+      "acceptance_criteria": [
+        "Update current-status sections against code without erasing dated historical live reports.",
+        "Link baseline and backlog; distinguish local tests, live retrieval, replay and deployed operation.",
+        "List actual opt-in specialist flags and review/validation limitations.",
+        "Record evidence dates and avoid presenting scaffolded features as live services."
+      ],
+      "test_requirements": "Run documented offline commands and check all internal links/status claims.",
+      "issue_file": "docs/backlog/TS-030.md",
+      "github_issue_number": 31
+    },
+    {
+      "id": "TS-031",
+      "priority": "P2",
+      "area": "Sources",
+      "title": "Activate Companies House only after approved API access",
+      "dependencies": [],
+      "external_blockers": [
+        "Approved Companies House API access"
+      ],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/32",
+      "context": "The adapter is deliberately paused while API access is unavailable.",
+      "paths": [
+        "src/trust_signal/connectors/companies_house.py",
+        "src/trust_signal/connectors/registry.py"
+      ],
+      "acceptance_criteria": [
+        "Obtain approved API access outside the repository and store secrets securely.",
+        "Review usage rights and remove the pause only through a reviewed change.",
+        "Verify real scoped identity lookup and RAW/OPS readback with bounded requests.",
+        "Keep officers/filings/ownership expansion in separately scoped follow-up issues."
+      ],
+      "test_requirements": "Credential absent/invalid, rate-limit, identifier mismatch and approved live lookup tests.",
+      "issue_file": "docs/backlog/TS-031.md",
+      "github_issue_number": 32
+    },
+    {
+      "id": "TS-032",
+      "priority": "P2",
+      "area": "Sources",
+      "title": "Resolve court computational-analysis permission",
+      "dependencies": [],
+      "external_blockers": [
+        "Project court computational-analysis permission"
+      ],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/33",
+      "context": "Court ingestion is intentionally gated and must not be bypassed.",
+      "paths": [
+        "src/trust_signal/connectors/registry.py",
+        "src/trust_signal/connectors/feeds.py",
+        "docs/legal-specialist.md"
+      ],
+      "acceptance_criteria": [
+        "Document permission for the intended project use or retain blocked coverage.",
+        "Set the existing approval configuration only after actual approval.",
+        "Verify bounded metadata ingestion and permitted retention/display independently from judgment interpretation.",
+        "Record source-use restrictions and renewal/revocation handling."
+      ],
+      "test_requirements": "Default block, revoked permission and approved bounded metadata integration tests.",
+      "issue_file": "docs/backlog/TS-032.md",
+      "github_issue_number": 33
+    },
+    {
+      "id": "TS-033",
+      "priority": "P2",
+      "area": "Sources",
+      "title": "Expand official legal/adverse-event sources by jurisdiction",
+      "dependencies": [
+        "TS-014",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/34",
+      "context": "Current legal coverage is mostly UK metadata and World Bank procurement; it is not worldwide legal coverage.",
+      "paths": [
+        "docs/official-source-catalog.md",
+        "src/trust_signal/connectors",
+        "src/trust_signal/agents/legal.py"
+      ],
+      "acceptance_criteria": [
+        "Prioritize one jurisdiction/source family and create a separate child issue for each adapter before coding.",
+        "Research official access, usage rights, party identifiers, procedural labels, appeal/finality fields and coverage.",
+        "Keep each adapter independently registered; expand the specialist's supported source contracts explicitly.",
+        "Verify real retrieval, persisted provenance and negative attribution examples; document unsupported countries and records."
+      ],
+      "test_requirements": "Jurisdiction-specific fixtures, access/schema failures, ambiguous parties and approved live RAW/OPS verification.",
+      "issue_file": "docs/backlog/TS-033.md",
+      "github_issue_number": 34
+    },
+    {
+      "id": "TS-034",
+      "priority": "P1",
+      "area": "Operations",
+      "title": "Implement worker health, metrics and actionable alerts",
+      "dependencies": [
+        "TS-002",
+        "TS-004",
+        "TS-025"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/35",
+      "context": "Sanitized source errors exist, but production health, tracing, metrics and alert delivery are incomplete.",
+      "paths": [
+        "src/trust_signal/orchestration",
+        "src/trust_signal/ingestion/pipeline.py",
+        "src/trust_signal/persistence/source_runs.py"
+      ],
+      "acceptance_criteria": [
+        "Expose authenticated or appropriately restricted health/readiness checks without leaking secrets.",
+        "Trace case/run/branch/source IDs and measure queue age, source latency, coverage, retries and stalled stages.",
+        "Configure approved alerts for sustained failures, stale sources, exhausted budgets and worker liveness.",
+        "Redact raw personal data and credentials; document retention, alert ownership and recovery runbooks."
+      ],
+      "test_requirements": "Worker death, stalled case, source outage, alert deduplication, unauthorized metrics and redaction tests.",
+      "issue_file": "docs/backlog/TS-034.md",
+      "github_issue_number": 35
+    },
+    {
+      "id": "TS-035",
+      "priority": "P1",
+      "area": "Product",
+      "title": "Decide open-source release scope and record architecture decisions",
+      "dependencies": [],
+      "external_blockers": [],
+      "initial_status": "Ready",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/36",
+      "context": "The hackathon scope is closed. A maintained worldwide open-source solution needs explicit first-release boundaries rather than inherited demo assumptions.",
+      "paths": [
+        "docs/project-context.md",
+        "docs/system-design.md"
+      ],
+      "acceptance_criteria": [
+        "Record the 2026-10-04 direction change; remove hackathon submission and deadline obligations from active plans while preserving dated history.",
+        "Decide first use cases, entity types, supported jurisdictions, non-goals and release acceptance; worldwide intent does not imply worldwide coverage.",
+        "Create dated decision records with rationale, alternatives, owner, affected issues and supersession for identity, review authority, scoring, hosting and model choices.",
+        "Map every retained thought to an issue or an explicitly deferred decision; resolve provider/news/notification choices in their existing tasks rather than duplicate implementation.",
+        "Maintain a tested thought-to-task coverage map; the 2026-10-05 scope is provider-portable Streamlit with managed procedures/jobs and DAG workflows. Hackathon, trial-account workarounds and separately hosted backend deployment are excluded; preserve historical reports without treating them as active requirements."
+      ],
+      "test_requirements": "Review the scope and traceability matrix with maintainers; verify every unresolved decision has an owning task and no historical demo default is represented as an approved production choice.",
+      "issue_file": "docs/backlog/TS-035.md",
+      "github_issue_number": 36
+    },
+    {
+      "id": "TS-036",
+      "priority": "P1",
+      "area": "Community",
+      "title": "Establish open-source licensing, contribution and maintenance policies",
+      "dependencies": [],
+      "external_blockers": [],
+      "initial_status": "Ready",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/37",
+      "context": "A public repository alone does not grant an open-source license or establish sustainable maintenance; no license choice is assumed.",
+      "paths": [
+        "README.md",
+        ".github",
+        "pyproject.toml"
+      ],
+      "acceptance_criteria": [
+        "Obtain maintainer approval for a code license and add LICENSE, notices and package metadata; distinguish code licensing from source-data rights.",
+        "Publish contribution, conduct, governance and private vulnerability-reporting policies; identify maintainer and review responsibilities without inventing contacts or response promises.",
+        "Define release versioning, support/deprecation policy, changelog and dependency update ownership; track SBOM/dependency/license checks with TS-029.",
+        "Provide rights-safe examples and a documented first-contribution path; never redistribute raw personal data or licensed source datasets by default."
+      ],
+      "test_requirements": "Check license/metadata consistency, documentation links, contributor clean-checkout workflow and dependency/data redistribution review.",
+      "issue_file": "docs/backlog/TS-036.md",
+      "github_issue_number": 37
+    },
+    {
+      "id": "TS-037",
+      "priority": "P1",
+      "area": "Contracts",
+      "title": "Version component contracts and verify adapter compatibility",
+      "dependencies": [
+        "TS-001"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/38",
+      "context": "Portable boundaries exist, but compatibility and independent reuse must be tested before replacing stores, workflows or models.",
+      "paths": [
+        "src/trust_signal",
+        "docs/portable-deployment.md"
+      ],
+      "acceptance_criteria": [
+        "Inventory connector, store, runtime, specialist, aggregator, validation, assessment, review and AI interfaces with versioned schemas and capability declarations.",
+        "Define backward-reading, migration and unsupported-version behavior for observations, findings, snapshots, graph definitions and review decisions.",
+        "Create reusable adapter conformance tests and independent component examples; keep cloud SDKs and SQL out of domain contracts.",
+        "Define plugin discovery/configuration allowlists and compatibility/deprecation rules; do not execute untrusted downloaded plugins automatically.",
+        "Define a versioned provider-neutral DAG/task specification for dependencies, identity gates, fan-out/join, Python and SQL stages, retries, timeouts and output references; reject cycles and unsupported native capabilities.",
+        "Separate application services from transport so Streamlit can call authorized commands directly or through an optional API; do not require a separately deployed microservice for every reusable component."
+      ],
+      "test_requirements": "Run conforming and deliberately nonconforming adapters, old-snapshot replay, schema upgrade and unavailable-capability tests.",
+      "issue_file": "docs/backlog/TS-037.md",
+      "github_issue_number": 38
+    },
+    {
+      "id": "TS-038",
+      "priority": "P1",
+      "area": "Onboarding",
+      "title": "Implement safe fork-and-install onboarding and environment diagnostics",
+      "dependencies": [
+        "TS-029",
+        "TS-037"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/39",
+      "context": "A contributor should fork, configure approved services and install without chat history; the proposed onboarding commands are not already implemented.",
+      "paths": [
+        "docs/portable-deployment.md",
+        "snowflake/setup",
+        "src/trust_signal/cli.py"
+      ],
+      "acceptance_criteria": [
+        "Provide doctor -> plan -> apply -> smoke-test -> deploy-ui stages or equivalent documented commands, keeping UI deployment deferred to TS-027.",
+        "Separate UI hosting, durable worker execution, evidence storage and local installation commands; validate account/region/features, identities, network access and estimated spend.",
+        "Make planning non-mutating, application explicitly approved, repeated installation safe, and partial failure/upgrade reconciliation documented; never overwrite operator credentials.",
+        "Verify clean-install, upgrade and unavailable-capability paths for supported providers; report requirements honestly and document uninstall/data-preservation choices.",
+        "Keep .env.example as the shareable template and private configuration as credential references; distinguish human installer login, workload credentials or managed identity, and supplied in-platform sessions without exporting secrets to browsers.",
+        "Diagnose billing, API enablement, quotas, runtime packages, SQL resources, permissions and outbound source access before installation; credentials alone cannot make a profile ready, and task schedules remain inactive until approved."
+      ],
+      "test_requirements": "Test absent credentials, unsupported capability, dry run, duplicate install, partial DDL and upgrade; record approved fresh-account smoke/readback separately from fixtures.",
+      "issue_file": "docs/backlog/TS-038.md",
+      "github_issue_number": 39
+    },
+    {
+      "id": "TS-039",
+      "priority": "P2",
+      "area": "Providers",
+      "title": "Implement provider-neutral workflow, storage and model adapter boundaries",
+      "dependencies": [
+        "TS-037",
+        "TS-038"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/40",
+      "context": "Target architecture is provider-portable; Snowflake is an existing adapter, not a required platform. Candidate cloud profiles require bounded implementation and verification before support claims.",
+      "paths": [
+        "docs/portable-deployment.md",
+        "src/trust_signal/orchestration",
+        "src/trust_signal/persistence"
+      ],
+      "acceptance_criteria": [
+        "Publish a capability matrix and runtime/storage/model/secrets adapter interfaces, preserving durable case ownership and raw-evidence verification.",
+        "Select one alternative provider from actual demand and create bounded child issues for runtime, persistence, identity, secrets, deployment and AI capabilities before coding.",
+        "Keep Streamlit the sole user-facing surface; do not force a separate microservice per component or silently substitute providers.",
+        "Require full contract and live install/restart/replay verification before marking a provider supported; identify region/cost/source-access constraints.",
+        "Retain candidate profiles explicitly: Snowflake Tasks/procedures, Google Workflows/Cloud Run Jobs with optional Dataproc or Composer, AWS Step Functions/functions or container jobs, and Azure Durable Functions/activities; Dataproc/Spark is optional batch compute, not the execution engine for every connector.",
+        "Translate the shared graph into one native execution owner per run; keep provider SDKs and SQL dialects behind adapters, avoid nested competing orchestrators, and use explicit operational-state, evidence-object and analytical-storage adapters.",
+        "Evaluate authenticated Streamlit-to-workflow connectivity for complete single-provider profiles; hybrid installations are opt-in and no component is silently moved across providers.",
+        "Normalize native engine states and events into case/run/stage/attempt contracts with correlation IDs and output references; reconcile engine success separately from business assessment and evidence coverage.",
+        "Choose supported transactional guarantees for operational state separately from object evidence and analytical SQL; document dialect, package and transaction differences instead of treating warehouses as interchangeable databases.",
+        "Specify rights-safe provider migration of evidence, case versions and reviewer history with stable IDs/hash verification; a new customer installation must not reuse another customer's secrets or silently lose prior audit data."
+      ],
+      "test_requirements": "Review the matrix and child issues; test unsupported-provider rejection and conformance; verify one approved alternate profile end to end before support claims.",
+      "issue_file": "docs/backlog/TS-039.md",
+      "github_issue_number": 40
+    },
+    {
+      "id": "TS-040",
+      "priority": "P1",
+      "area": "Privacy",
+      "title": "Implement approved evidence retention, redaction and deletion lifecycle",
+      "dependencies": [
+        "TS-003",
+        "TS-004"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/41",
+      "context": "Restricted raw responses may contain personal information. Immutable review history is not permission for indefinite retention.",
+      "paths": [
+        "docs/system-design.md",
+        "src/trust_signal/persistence",
+        "docs/official-source-catalog.md"
+      ],
+      "acceptance_criteria": [
+        "Obtain operator-approved jurisdiction/source/purpose policies for raw documents, extracts, search indexes, case snapshots, audit and logs; record license renewal/revocation.",
+        "Implement restricted correction/access/deletion workflows and lawful hold handling with identity verification and minimal non-sensitive audit references.",
+        "Propagate permitted purge/redaction across caches, indexes, exports and backup lifecycle; document erasure limits and recompute/invalidate affected assessments.",
+        "Test retention enforcement and restore behavior; do not infer legal requirements from a generic default or alter live retention without approval."
+      ],
+      "test_requirements": "Test expiry, revocation, authorized/unauthorized requests, legal hold, indexed copies and restore-after-deletion; record privacy-owner approval.",
+      "issue_file": "docs/backlog/TS-040.md",
+      "github_issue_number": 41
+    },
+    {
+      "id": "TS-041",
+      "priority": "P1",
+      "area": "Recovery",
+      "title": "Define disaster recovery targets and verify backup restoration",
+      "dependencies": [
+        "TS-003",
+        "TS-021",
+        "TS-029"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/42",
+      "context": "Interrupted-source retries do not recover a lost installation or complete evidence/decision history.",
+      "paths": [
+        "docs/system-design.md",
+        "snowflake",
+        "src/trust_signal/persistence"
+      ],
+      "acceptance_criteria": [
+        "Agree RPO/RTO and failure scenarios for each supported deployment profile; distinguish prototype exports from production recovery promises.",
+        "Back up evidence lineage, run/checkpoint state, graph/model/policy versions and review/outbox records using permitted rights/residency boundaries.",
+        "Implement documented restore/reconciliation procedures that avoid duplicate notifications, stale scores and resurrected deleted content.",
+        "Run an approved isolated restore drill with integrity/readback checks; evaluate Snowflake recovery features only against actual edition, region and budget."
+      ],
+      "test_requirements": "Restore representative cases and decisions into an isolated environment, check hashes/history, reconcile pending work and measure achieved recovery targets.",
+      "issue_file": "docs/backlog/TS-041.md",
+      "github_issue_number": 42
+    },
+    {
+      "id": "TS-042",
+      "priority": "P1",
+      "area": "Security",
+      "title": "Threat-model source, agent, plugin and deployment boundaries",
+      "dependencies": [
+        "TS-004",
+        "TS-037"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/43",
+      "context": "Existing authorization and Cortex injection tasks need a cross-component threat model, not a second implementation of the same safeguards.",
+      "paths": [
+        "docs/system-design.md",
+        "src/trust_signal/connectors",
+        "src/trust_signal/research",
+        ".github"
+      ],
+      "acceptance_criteria": [
+        "Document trust boundaries, abuse cases and ownership covering retrieval, document parsing, agent tools, plugins, exports and installation.",
+        "Add bounded tests for SSRF/redirect host escape, malformed/compressed documents, SQL injection, secret leakage and unsafe tool invocation; link TS-023 prompt-injection tests.",
+        "Define least-privilege service identities, secret rotation and compromised-key response; separate tenant/user credentials from account administration.",
+        "Link mitigations and accepted residual risks to release gates and private disclosure processes in TS-036; no intrusive live testing without approval."
+      ],
+      "test_requirements": "Run adversarial fixtures and authorization/secret checks; review residual risks and approved incident tabletop outcomes.",
+      "issue_file": "docs/backlog/TS-042.md",
+      "github_issue_number": 43
+    },
+    {
+      "id": "TS-043",
+      "priority": "P1",
+      "area": "Operations",
+      "title": "Define service targets, quotas and durable cancellation semantics",
+      "dependencies": [
+        "TS-002",
+        "TS-034"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/44",
+      "context": "Global monitoring needs measured source freshness and bounded resource consumption, not an unconditional real-time promise.",
+      "paths": [
+        "docs/system-design.md",
+        "src/trust_signal/orchestration",
+        "docs/dev-cost-controls.md"
+      ],
+      "acceptance_criteria": [
+        "Choose source-specific freshness/latency/availability targets, alert ownership and incident response procedures; distinguish provider delay from system delay.",
+        "Enforce per-case/source/tenant quotas, admission control and fair bounded concurrency for ingestion, inference and monitoring; account cost monitors are not complete spend caps.",
+        "Implement authorized cancel/resume semantics that stop new work, preserve persisted evidence and reconcile in-flight writes without duplicate case owners.",
+        "Verify overload, queue saturation, budget exhaustion and cancellation during fetch/write/aggregation; connect approved alerts through TS-034 and notifications through TS-028."
+      ],
+      "test_requirements": "Run bounded load/soak and fault tests, verify quota isolation and cancellation races; record measured targets rather than unsupported SLO claims.",
+      "issue_file": "docs/backlog/TS-043.md",
+      "github_issue_number": 44
+    },
+    {
+      "id": "TS-044",
+      "priority": "P2",
+      "area": "Financial",
+      "title": "Scope official financial filings and disclosure research",
+      "dependencies": [
+        "TS-035",
+        "TS-018",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/45",
+      "context": "Financial statements, restatements and overdue filings are preserved target dimensions but not approved source-specific implementation.",
+      "paths": [
+        "docs/product-and-technical-design.md",
+        "docs/official-source-catalog.md",
+        "src/trust_signal/agents"
+      ],
+      "acceptance_criteria": [
+        "Decide supported issuer/entity types and one official jurisdiction/source family, researching rights and identifier coverage before selecting an adapter.",
+        "Create bounded connector and specialist child issues for permitted filings, restatements and filing status with period/currency/accounting-context contracts.",
+        "Preserve reported facts and corrections with raw lineage; do not infer fraud, insolvency or universal solvency from ratios or absent filings.",
+        "Define applicability and labeled attribution/interpretation tests; unsupported private-company records remain not_applicable or coverage gaps as appropriate."
+      ],
+      "test_requirements": "Review source terms and child-task scope; require period/unit, restatement, same-name, missing-record and approved live provenance tests before implementation acceptance.",
+      "issue_file": "docs/backlog/TS-044.md",
+      "github_issue_number": 45
+    },
+    {
+      "id": "TS-045",
+      "priority": "P2",
+      "area": "Operational",
+      "title": "Scope official product, safety and cyber-event research",
+      "dependencies": [
+        "TS-035",
+        "TS-018",
+        "TS-019"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/46",
+      "context": "Recalls, safety actions, closures and material cyber events remain a logical specialist dimension; news presence alone does not verify such an event.",
+      "paths": [
+        "docs/product-and-technical-design.md",
+        "docs/official-source-catalog.md",
+        "src/trust_signal/agents"
+      ],
+      "acceptance_criteria": [
+        "Choose one official source family and jurisdiction and publish separately scoped adapter/specialist child issues after access and rights review.",
+        "Define subject/manufacturer/operator/product/affected-party roles and event states with dates, revisions and source evidence.",
+        "Distinguish reported incidents, regulator notices, remediation and final findings; do not infer party blame or automatic risk scores.",
+        "Evaluate entity/product ambiguity, corrections and incomplete source coverage; avoid collecting sensitive breach victim data."
+      ],
+      "test_requirements": "Review the event taxonomy and child issues; require negative attribution, revision and approved live evidence/readback tests.",
+      "issue_file": "docs/backlog/TS-045.md",
+      "github_issue_number": 46
+    },
+    {
+      "id": "TS-046",
+      "priority": "P2",
+      "area": "Conflicts",
+      "title": "Decide and scope contextual business conflict-of-interest research",
+      "dependencies": [
+        "TS-013",
+        "TS-018",
+        "TS-035"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/47",
+      "context": "Conflicting source claims, sanctions relationships and business conflicts of interest are separate concepts. A shared director is not proof of wrongdoing.",
+      "paths": [
+        "docs/project-context.md",
+        "docs/ownership-specialist.md",
+        "src/trust_signal/agents/ownership.py"
+      ],
+      "acceptance_criteria": [
+        "Decide whether procurement/employment/business conflict checks belong in the supported product and explicitly defer them if no approved use case exists.",
+        "Define input context, independently resolved people/organizations, dated relationship evidence and approved relevance rules.",
+        "Create bounded implementation/evaluation child issues only after policy approval; label potential relationships and uncertainty, never automatic wrongdoing.",
+        "Preserve personal-data restrictions and human review; do not repurpose public role data beyond approved purpose/rights."
+      ],
+      "test_requirements": "Review use-case decision, positive/negative same-name/shared-director cases, time-bound relationships and privacy limits.",
+      "issue_file": "docs/backlog/TS-046.md",
+      "github_issue_number": 47
+    },
+    {
+      "id": "TS-047",
+      "priority": "P2",
+      "area": "UI",
+      "title": "Specify accessible and localized Streamlit review workflows",
+      "dependencies": [
+        "TS-027"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/48",
+      "context": "UI remains later. Multilingual entity matching does not establish an accessible localized analyst interface.",
+      "paths": [
+        "app.py",
+        "docs/figma-design-handoff.md",
+        "docs/figma-design-prompt.md"
+      ],
+      "acceptance_criteria": [
+        "Extend the agreed Streamlit experience with keyboard/focus/screen-reader, contrast, status announcements and non-color-only evidence states.",
+        "Define locale/date/time-zone and original-language evidence display; preserve original names and distinguish translations from source text.",
+        "Verify long names, right-to-left/multiscript content where supported, desktop/mobile layout and error recovery without losing durable case state.",
+        "Document the supported accessibility/localization test matrix and unmet limitations; avoid introducing a second user-facing frontend."
+      ],
+      "test_requirements": "Run accessibility checks and representative keyboard/screen-reader and locale tests alongside TS-027 end-to-end verification.",
+      "issue_file": "docs/backlog/TS-047.md",
+      "github_issue_number": 48
+    },
+    {
+      "id": "TS-048",
+      "priority": "P2",
+      "area": "Distribution",
+      "title": "Decide release packaging and optional Snowflake Native App distribution",
+      "dependencies": [
+        "TS-036",
+        "TS-038"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/49",
+      "context": "Open-source distribution needs a reproducible supported package; Snowflake Native App packaging is a future option, not a requirement inherited from the hackathon.",
+      "paths": [
+        "pyproject.toml",
+        "snowflake",
+        "docs/portable-deployment.md"
+      ],
+      "acceptance_criteria": [
+        "Choose supported Python/container/source installation artifacts and versioning; publish compatibility, upgrade and release verification requirements.",
+        "Verify built artifacts include required SQL/config/templates without credentials, evidence outputs or locally dependent paths.",
+        "Decide whether customer Snowflake Native App delivery is needed; create feasibility and packaging child issues only if approved.",
+        "Document support boundaries, signing/provenance and dependency/SBOM checks with TS-029; no marketplace submission or paid infrastructure without approval."
+      ],
+      "test_requirements": "Test artifact install from a clean environment, resources availability and upgrade; record the Native App decision and any capability/security feasibility evidence.",
+      "issue_file": "docs/backlog/TS-048.md",
+      "github_issue_number": 49
+    },
+    {
+      "id": "TS-049",
+      "priority": "P2",
+      "area": "Interop",
+      "title": "Scope external integrations and portable case evidence exports",
+      "dependencies": [
+        "TS-004",
+        "TS-022",
+        "TS-040"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/50",
+      "context": "External APIs, customer systems and export reuse are future integration boundaries; internal review endpoints are not a complete public integration contract.",
+      "paths": [
+        "src/trust_signal/domain",
+        "src/trust_signal/research",
+        "docs/system-design.md"
+      ],
+      "acceptance_criteria": [
+        "Select first consumer/use case; version authenticated case/evidence export and webhook contracts with pagination, idempotency and scoped permissions.",
+        "Export provenance, coverage, policy/version and review context only where rights permit; never package restricted raw documents or personal identifiers by default.",
+        "Define signed delivery/retry/replay, key rotation, opt-out, size limits and audit records; reuse TS-022/028 outbox rather than a second notification engine.",
+        "Document compatibility and implement one bounded integration child issue; no CRM/ERP breadth or compliance guarantees implied."
+      ],
+      "test_requirements": "Test tampering, cross-tenant export, revoked rights, duplicate/reordered delivery and safe large-result pagination.",
+      "issue_file": "docs/backlog/TS-049.md",
+      "github_issue_number": 50
+    },
+    {
+      "id": "TS-050",
+      "priority": "P1",
+      "area": "Sources",
+      "title": "Govern source coverage, licensing changes and connector deprecation",
+      "dependencies": [
+        "TS-009",
+        "TS-015"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/51",
+      "context": "A worldwide open-source catalog needs explicit coverage and maintenance, not a list interpreted as complete jurisdiction support.",
+      "paths": [
+        "docs/official-source-catalog.md",
+        "src/trust_signal/connectors/registry.py",
+        "docs/source-integration-status.md"
+      ],
+      "acceptance_criteria": [
+        "Version country/entity/event coverage, source authority, access/rights, permitted retention/display, freshness, owner and live verification date.",
+        "Define source approval, disabling, license revocation, schema change and deprecation procedures with affected-case/assessment invalidation.",
+        "Publish contributor adapter checklists and rights-safe fixture requirements; link TS-010/031/032/033 expansion and access gates.",
+        "Distinguish no_matches, no coverage, blocked access, stale snapshot and failure; unsupported countries remain explicit and cannot receive a clean score."
+      ],
+      "test_requirements": "Test schema/terms changes, revoked source and stale catalog, verify impacted-case handling and review one new-source proposal without bypassing access.",
+      "issue_file": "docs/backlog/TS-050.md",
+      "github_issue_number": 51
+    },
+    {
+      "id": "TS-051",
+      "priority": "P2",
+      "area": "Tenancy",
+      "title": "Scope installation and tenant lifecycle administration",
+      "dependencies": [
+        "TS-004",
+        "TS-038",
+        "TS-040"
+      ],
+      "external_blockers": [],
+      "initial_status": "Blocked",
+      "owner": null,
+      "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/52",
+      "context": "Self-hosted installations are the current direction; a hosted customer control plane with BYO cloud credentials remains optional and unimplemented.",
+      "paths": [
+        "docs/portable-deployment.md",
+        "src/trust_signal/persistence",
+        "docs/system-design.md"
+      ],
+      "acceptance_criteria": [
+        "Decide single-installation versus hosted multi-tenant support and document ownership of identities, service credentials, data residency and quotas.",
+        "For approved hosted scope, create bounded child issues for membership invitation/revocation, case ownership, offboarding and tenant-bound secret/pool isolation.",
+        "Never accept arbitrary customer cloud credentials through a public endpoint or store all customer secrets in one shared dotenv file.",
+        "Verify tenant offboarding and installation removal retain/delete data according to approved policy; hosted billing/control-plane features stay deferred unless requested."
+      ],
+      "test_requirements": "Review hosting decision and child tasks; require revoked membership, tenant deletion, connection isolation and secret rotation tests for any supported hosted profile.",
+      "issue_file": "docs/backlog/TS-051.md",
+      "github_issue_number": 52
+    }
+  ],
+  "github_publication": {
+    "repository": "ankur-agarwal-38aa6766/trust-signal",
+    "source_branch": "master",
+    "published_date": "2026-10-04",
+    "issue_count": 51,
+    "project_url": null
+  },
+  "direction": {
+    "recorded_date": "2026-10-04",
+    "active_scope": "Provider-portable worldwide open-source research solution; Streamlit UI and provider-managed procedures/jobs/DAG workflows.",
+    "hackathon_scope": "Closed; no submission, deadline or CoCo proof obligation.",
+    "context_file": "docs/future-scope.md",
+    "decision_owner_task": "TS-035",
+    "scope_updated_date": "2026-10-05",
+    "excluded_scope": [
+      "Hackathon submission/deadlines and CoCo proof",
+      "Snowflake trial-account workaround and upgrade investigations",
+      "Separately hosted always-running backend service as a required architecture"
+    ]
+  },
+  "scope_coverage": {
+    "audited_date": "2026-10-05",
+    "basis": "Visible conversation, current repository scope and published issues; not a guarantee about unseen discussions.",
+    "topics": [
+      {
+        "thought": "global_identity_and_jurisdiction_coverage",
+        "task_ids": [
+          "TS-005",
+          "TS-006",
+          "TS-007",
+          "TS-010",
+          "TS-033",
+          "TS-050"
+        ]
+      },
+      {
+        "thought": "modular_component_contracts_and_plugins",
+        "task_ids": [
+          "TS-037",
+          "TS-042"
+        ]
+      },
+      {
+        "thought": "provider_neutral_dag_python_sql_runtime",
+        "task_ids": [
+          "TS-002",
+          "TS-037",
+          "TS-039"
+        ]
+      },
+      {
+        "thought": "streamlit_trigger_monitor_reconnect_and_results",
+        "task_ids": [
+          "TS-005",
+          "TS-027",
+          "TS-034",
+          "TS-047"
+        ]
+      },
+      {
+        "thought": "fork_install_credentials_permissions_and_upgrades",
+        "task_ids": [
+          "TS-029",
+          "TS-038",
+          "TS-048",
+          "TS-051"
+        ]
+      },
+      {
+        "thought": "workflow_ownership_retry_replay_and_cancellation",
+        "task_ids": [
+          "TS-002",
+          "TS-008",
+          "TS-041",
+          "TS-043"
+        ]
+      },
+      {
+        "thought": "operational_evidence_and_analytical_storage",
+        "task_ids": [
+          "TS-003",
+          "TS-021",
+          "TS-039"
+        ]
+      },
+      {
+        "thought": "shared_refresh_vs_per_case_research",
+        "task_ids": [
+          "TS-003",
+          "TS-009",
+          "TS-028"
+        ]
+      },
+      {
+        "thought": "sanctions_ownership_board_news_legal",
+        "task_ids": [
+          "TS-011",
+          "TS-012",
+          "TS-013",
+          "TS-014",
+          "TS-015",
+          "TS-031",
+          "TS-032",
+          "TS-033"
+        ]
+      },
+      {
+        "thought": "aggregation_comparison_conflicts_and_versions",
+        "task_ids": [
+          "TS-016",
+          "TS-017",
+          "TS-046"
+        ]
+      },
+      {
+        "thought": "evidence_validation_and_evaluation",
+        "task_ids": [
+          "TS-018",
+          "TS-019",
+          "TS-026"
+        ]
+      },
+      {
+        "thought": "versioned_scoring_and_human_review",
+        "task_ids": [
+          "TS-020",
+          "TS-021",
+          "TS-022"
+        ]
+      },
+      {
+        "thought": "optional_models_retrieval_and_agent_tools",
+        "task_ids": [
+          "TS-023",
+          "TS-024",
+          "TS-039"
+        ]
+      },
+      {
+        "thought": "source_rights_freshness_and_deprecation",
+        "task_ids": [
+          "TS-009",
+          "TS-015",
+          "TS-032",
+          "TS-040",
+          "TS-050"
+        ]
+      },
+      {
+        "thought": "authentication_authorization_secret_isolation",
+        "task_ids": [
+          "TS-004",
+          "TS-038",
+          "TS-042",
+          "TS-051"
+        ]
+      },
+      {
+        "thought": "privacy_retention_residency_and_exports",
+        "task_ids": [
+          "TS-025",
+          "TS-040",
+          "TS-049"
+        ]
+      },
+      {
+        "thought": "quotas_costs_telemetry_and_operational_alerts",
+        "task_ids": [
+          "TS-025",
+          "TS-034",
+          "TS-043"
+        ]
+      },
+      {
+        "thought": "restore_and_provider_migration",
+        "task_ids": [
+          "TS-039",
+          "TS-041"
+        ]
+      },
+      {
+        "thought": "future_financial_safety_and_conflict_research",
+        "task_ids": [
+          "TS-044",
+          "TS-045",
+          "TS-046"
+        ]
+      },
+      {
+        "thought": "accessibility_localization_and_ui_design",
+        "task_ids": [
+          "TS-027",
+          "TS-047"
+        ]
+      },
+      {
+        "thought": "open_source_license_contribution_and_distribution",
+        "task_ids": [
+          "TS-035",
+          "TS-036",
+          "TS-048"
+        ]
+      },
+      {
+        "thought": "customer_integrations_monitoring_and_offboarding",
+        "task_ids": [
+          "TS-028",
+          "TS-049",
+          "TS-051"
+        ]
+      },
+      {
+        "thought": "baseline_publish_and_scope_tracking",
+        "task_ids": [
+          "TS-001",
+          "TS-030",
+          "TS-035"
+        ]
+      }
+    ]
+  }
+}

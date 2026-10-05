@@ -1,0 +1,24 @@
+name: Bug Report
+description: Report a reproducible regression without sharing private evidence.
+title: "[Bug] "
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and environment
+      description: Commit, component, safe inputs and exact reproduction steps. Never include secrets or raw private evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected versus actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and sanitized evidence
+      description: Include identity/attribution, data-loss, tenant, source-coverage or operational impact; distinguish live from fixture results.
+    validations:
+      required: true

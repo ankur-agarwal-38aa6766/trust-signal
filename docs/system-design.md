@@ -1,5 +1,12 @@
 # TrustSignal System Design and Operating Plan
 
+> Direction update (2026-10-04): the hackathon scope is closed. This design is
+> retained for architectural context; hackathon deadlines, submissions and demo-only
+> defaults are superseded. Use [future scope](future-scope.md),
+> [project context](project-context.md) and [development backlog](development-backlog.md)
+> for current open-source decisions and actionable work. Dated implementation
+> claims and estimates below are not current verification or delivery commitments.
+
 **Status:** Proposed system design based on the global product brief, current implementation, source research, and the intended parallel specialist-agent workflow.
 **Purpose:** Make the product, runtime, security, operations, and delivery decisions reviewable before expanding implementation.
 

@@ -12,6 +12,11 @@ from pydantic import Field, field_validator
 from trust_signal.domain.aggregation import AggregationResult, ComparisonItem
 from trust_signal.domain.base import Contract
 from trust_signal.domain.identity import IdentityResolution
+from trust_signal.domain.legal import LegalResearchResult
+from trust_signal.domain.news import NewsResearchResult
+from trust_signal.domain.ownership import OwnershipResearchResult
+from trust_signal.domain.sanctions import SanctionsScreeningResult
+from trust_signal.domain.validation import ValidationResult
 
 
 def utc_now() -> datetime:
@@ -109,6 +114,10 @@ class BranchResult(Contract):
     limitations: list[str] = Field(default_factory=list)
     error: str | None = None
     identity_resolution: IdentityResolution | None = None
+    sanctions_screening: SanctionsScreeningResult | None = None
+    ownership_research: OwnershipResearchResult | None = None
+    legal_research: LegalResearchResult | None = None
+    news_research: NewsResearchResult | None = None
     started_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime = Field(default_factory=utc_now)
 
@@ -131,5 +140,6 @@ class CaseResult(Contract):
     branches: list[BranchResult] = Field(default_factory=list)
     comparison_board: list[ComparisonItem] = Field(default_factory=list)
     aggregation: AggregationResult | None = None
+    validation: ValidationResult | None = None
     assessment: Assessment
     created_at: datetime = Field(default_factory=utc_now)

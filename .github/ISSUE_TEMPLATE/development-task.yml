@@ -1,0 +1,48 @@
+name: Development Task
+description: Implement a bounded baseline backlog task or an approved extension.
+title: "[TS-xxx] "
+body:
+  - type: input
+    id: backlog
+    attributes:
+      label: Backlog ID and baseline
+      description: Link the docs/backlog task and baseline revision; use a new ID for new scope.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Goal, scope and starting paths
+      description: State what changes and what stays unchanged; copy the issue-ready task body when publishing.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies, permissions and blockers
+      description: Link prerequisite issues; include source rights, secrets, cloud budget and account approvals.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable outcomes, not just files or implementation steps.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Unit/integration/live checks, replay, failures, tenant isolation and evidence required.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Baseline guardrails
+      options:
+        - label: No credentials, private keys or raw personal data are included.
+          required: true
+        - label: Live verification is distinguished from fixtures/replay and cloud changes require approval.
+          required: true

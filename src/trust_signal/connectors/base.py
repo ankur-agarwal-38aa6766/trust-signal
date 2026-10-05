@@ -55,6 +55,11 @@ class SanctionsListing(Contract):
     comments: str | None = None
     measures: list[str] = Field(default_factory=list)
     programs: list[str] = Field(default_factory=list)
+    lei: str | None = None
+    registration_id: str | None = None
+    registration_authority: str | None = None
+    registration_jurisdiction: str | None = None
+    registered_address: str | None = None
 
 
 class EntityLookup(Contract):
@@ -110,6 +115,10 @@ class SourceEvent(Contract):
     published_at: str | None = None
     updated_at: str | None = None
     subject_name: str | None = None
+    subject_lei: str | None = None
+    subject_registration_id: str | None = None
+    subject_registration_authority: str | None = None
+    subject_registration_jurisdiction: str | None = None
     jurisdiction: str | None = None
     source_category: str | None = None
     outcome: str | None = None

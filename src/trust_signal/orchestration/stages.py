@@ -6,6 +6,7 @@ from typing import Protocol
 from trust_signal.aggregation import AggregationService, EvidenceAggregator
 from trust_signal.domain.aggregation import AggregationResult
 from trust_signal.domain.identity import IdentityResolution
+from trust_signal.domain.validation import ValidationResult
 from trust_signal.domain.workflow import (
     SPECIALIST_STAGES,
     StageAttempt,
@@ -23,6 +24,7 @@ from trust_signal.models import (
     Disposition,
     SourceMode,
 )
+from trust_signal.research.validation import EvidenceValidator
 
 
 class WorkflowStore(Protocol):
@@ -55,7 +57,9 @@ class StageRunner:
     def execute(self, run_id: str, stage: WorkflowStage) -> dict:
         run = self.store.load(run_id)
         previous = self.store.latest(run_id, stage)
-        if previous and previous.status in CACHED_STATUSES:
+        legacy_validation = (stage == WorkflowStage.VALIDATE and previous and previous.output
+                             and previous.output.get("policy_version") != "validation-0.1")
+        if previous and previous.status in CACHED_STATUSES and not legacy_validation:
             if previous.output is None:
                 raise ValueError("Completed stage has no durable output.")
             output = previous.output
@@ -172,9 +176,10 @@ class StageRunner:
             result = self.aggregator.aggregate(self._branches(run.run_id), resolution)
             return {"aggregation": result.model_dump(mode="json")}
         if stage == WorkflowStage.VALIDATE:
-            self._output(run.run_id, WorkflowStage.AGGREGATE)
-            return {"status": "not_validated", "eligible_finding_ids": [],
-                    "limitations": ["Claim/event validation is not configured; findings cannot be scored."]}
+            aggregation = AggregationResult.model_validate(
+                self._output(run.run_id, WorkflowStage.AGGREGATE)["aggregation"])
+            return EvidenceValidator().validate(request, self._branches(run.run_id),
+                                                aggregation, resolution).model_dump(mode="json")
         if stage == WorkflowStage.ASSESS:
             aggregation = AggregationResult.model_validate(
                 self._output(run.run_id, WorkflowStage.AGGREGATE)["aggregation"])
@@ -185,6 +190,7 @@ class StageRunner:
                 case_id=run.case_id, party=request.party, status=CaseStatus.COMPLETED_WITH_GAPS,
                 identity_status="resolved", identity_resolution=resolution, branches=branches,
                 aggregation=aggregation, comparison_board=aggregation.comparison_board,
+                validation=ValidationResult.model_validate(validation),
                 assessment=Assessment(score_status="not_scored_policy_not_configured",
                                       reasons=["A validated scoring policy is not configured.",
                                                *validation["limitations"], *limitations],

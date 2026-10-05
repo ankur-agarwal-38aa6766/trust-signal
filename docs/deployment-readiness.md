@@ -49,10 +49,12 @@ Search service, Agent, or paid-account eligibility was tested here.
    Edition, trial expiry, remaining credits, and hackathon terms still need review.
    The earlier deployment recorded error 509009 when creating an EAI; no new
    CREATE was attempted. In-Snowflake live external access is blocked on this trial.
-2. Choose the deployment path: eligible in-Snowflake external access, or an
-   external ingestion worker while retaining Snowflake storage/workflow services.
-   The external-worker path still needs runtime wiring; it is not a configuration
-   switch for the existing failure handler.
+2. Decision: retain this trial account for now. Source fetching will run outside
+   Snowflake, initially as a manually invoked local worker using the existing
+   application connection and ingestion pipeline. RAW evidence and source-run
+   history stay in Snowflake. See [trial deployment](trial-deployment.md).
+   Integration with the deployed task graph remains pending; this decision does
+   not turn its failure handler into a live identity stage.
 3. Approve a credit budget, alert recipients, warehouse thresholds, serverless/AI
    monitoring, and whether query acceleration is justified for this DEV workload.
 4. Approve inference geography and allowed models before sending case evidence
@@ -78,15 +80,48 @@ are recorded. Review the impact on other workloads before changing account-wide
 parameters. Resource monitors do not cover all serverless/AI costs; add supported
 budgets and usage monitoring rather than claiming a universal hard cap.
 
-Then, on an eligible account, provision the narrow GLEIF integration, regenerate
-the versioned deployment bundle without the external-access fallback, upload and
-replace the live identity procedure, and execute a fresh isolated smoke request.
-Keep the root suspended throughout. Granting an EAI alone cannot replace the
-deployed `identity_unavailable` handler. Follow the existing
-[initialization guide](snowflake-initialization.md), rather than maintaining a
-second provisioning path in manual worksheets.
+For the selected trial path, verify the external worker's existing service
+connection, configure approved cost/security controls, and run one bounded GLEIF
+ingestion. Keep the Snowflake root suspended. Do not provision an EAI or redeploy
+the live outbound identity procedure on this account. A future eligible-account
+migration can use the existing [initialization guide](snowflake-initialization.md),
+rather than maintaining a second provisioning path in manual worksheets.
+
+The external service-connection health check has now passed in this work session:
+the expected ingestion identity/context was verified and the session was reused.
+Only context queries ran; this is not a new ingestion smoke, role-inheritance
+audit, cost-control deployment, or Cortex verification.
+
+Update, 2026-10-04: the user reported ten trial days remaining and approved
+continued work. The direct ingestion-role grant inventory was reviewed, and one
+external-worker GLEIF ingestion passed pipeline storage/lifecycle verification.
+See [trial smoke report](trial-smoke-2026-10-04.md). The remaining balance is
+unknown; no credit quota, monitor, warehouse setting, or schedule was changed.
+
+Subsequent update, 2026-10-04: after explicit approval, a warehouse-only daily
+1-credit monitor was created and attached, and query acceleration was disabled.
+Live metadata verified the quota, thresholds, assignment, retained idle controls,
+and suspended task root. This supersedes the earlier warehouse-cost baseline,
+not the historical ingestion result. See [DEV cost controls](dev-cost-controls.md).
+Notification delivery and the full effective-access review remain pending; no
+billing, data, runtime-role, Cortex-routing, or schedule changes were made.
 
 Step 1 is partially complete: the live deployment baseline is inspected and trial
-status is user-confirmed. Edition, administrator visibility, deployment-path
-approval, budget, and inference geography remain open. Do not mark live deployment
+status is user-confirmed. The deployment path is selected. Edition, administrator
+visibility, budget, and inference geography remain open. Do not mark live deployment
 ready or retry EAI creation on the unchanged trial account.
+
+Access review update, 2026-10-04: the service user's sole explicit role and
+bounded positive/negative authorization checks were reviewed. PUBLIC learning,
+warehouse, and AI access plus default ALL secondary roles create least-privilege
+gaps. No grants were changed; approval is needed for remediation. See
+[ingestion access review](ingestion-access-review.md). The user reported enabling
+resource-monitor notifications; delivery remains unverified.
+
+Hardening update, 2026-10-04: selected PUBLIC AI/learning/extra-compute grants were
+preserved for the human operator and revoked where supported. The service default
+secondary roles are empty. Fresh-session access checks and one bounded GLEIF
+write/readback passed. Built-in ML_USER and DATA_METRIC_USER PUBLIC access remains
+because the attempted revocations were denied. See
+[hardening results](ingestion-access-hardening.md); full production isolation and
+the external-worker case-stage handoff remain pending.

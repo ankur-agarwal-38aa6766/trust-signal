@@ -1,5 +1,12 @@
 # TrustSignal Implementation Roadmap
 
+> Direction update (2026-10-04): the hackathon scope is closed. This design is
+> retained for architectural context; hackathon deadlines, submissions and demo-only
+> defaults are superseded. Use [future scope](future-scope.md),
+> [project context](project-context.md) and [development backlog](development-backlog.md)
+> for current open-source decisions and actionable work. Dated implementation
+> claims and estimates below are not current verification or delivery commitments.
+
 This roadmap turns the product design into a focused Snowflake COCO hackathon build and a credible path beyond the demo. Prioritize a complete evidence flow over superficial country counts.
 
 Use [the complete implementation plan](complete-implementation-plan.md) as the execution backlog. It refines these phases into work packages and supersedes earlier hosting guidance for the complete Cortex Agent UI: target Streamlit container runtime, with the existing warehouse-runtime intake app as an interim prototype.

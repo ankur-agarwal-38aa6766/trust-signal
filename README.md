@@ -1,5 +1,17 @@
 # TrustSignal
 
+TrustSignal is an open-source, worldwide evidence-led legal-entity research solution.
+The hackathon scope is closed. Start with the [future scope and decision register](docs/future-scope.md)
+for retained ideas, unresolved choices and their delivery issues. Snowflake remains
+the first supported platform; other provider integrations are future work.
+
+The [project context and decisions](docs/project-context.md) preserve the original
+vision, constraints, open questions and links for future contributors.
+
+For handoff and remaining work, start with the [development backlog](docs/development-backlog.md)
+and [implementation baseline](docs/baseline.md). Issue-ready tasks cover all seven
+flow stages and shared platform work; historical status sections below may lag this baseline.
+
 Use [.env.example](.env.example) as the account-independent template and keep
 your populated `.env` private. [Portable Deployment](docs/portable-deployment.md)
 explains new-account setup and future provider adapters.
@@ -141,6 +153,8 @@ uv run --locked --extra dev ruff check src tests app.py snowflake/app
 
 ## Design documents
 
+- [Figma product and backend handoff](docs/figma-design-handoff.md): complete UI scope, personas, screens, stage/agent flows, backend mappings, readiness boundaries, and prototype acceptance criteria.
+- [Figma design prompt](docs/figma-design-prompt.md): concise design-tool brief with current-backend and future-product journeys.
 - [Snowflake initialization](docs/snowflake-initialization.md): complete repeatable onboarding, ordered SQL, migration checksums, service identity and safe activation boundaries.
 - [Source connectors](docs/source-connectors.md): expanded adapters, live verification boundaries, event labels, access/rights gates and sample requests.
 - [Snowflake workflow orchestration](docs/snowflake-orchestration.md): durable case/stage runs, reusable task graph, deployment artifacts, retries and recovery.

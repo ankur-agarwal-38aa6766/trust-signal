@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from operator import add
 from typing import Annotated, TypedDict
@@ -14,6 +15,7 @@ from trust_signal.agents.registry import branches_for_mode
 from trust_signal.aggregation import AggregationService, EvidenceAggregator
 from trust_signal.domain.aggregation import AggregationResult
 from trust_signal.domain.identity import IdentityCandidate, IdentityResolution, ResolutionStatus
+from trust_signal.domain.validation import ValidationResult
 from trust_signal.models import (
     Assessment,
     BranchResult,
@@ -25,6 +27,7 @@ from trust_signal.models import (
     Disposition,
     SourceMode,
 )
+from trust_signal.research.validation import EvidenceValidator
 from trust_signal.resolution.evidence import stable_id
 from trust_signal.resolution.resolver import EntityResolver
 
@@ -37,6 +40,7 @@ class WorkflowState(TypedDict, total=False):
     branches: Annotated[list[BranchResult], add]
     comparison_board: list[ComparisonItem]
     aggregation: AggregationResult
+    validation: ValidationResult
     assessment: Assessment
     status: CaseStatus
 
@@ -56,11 +60,15 @@ def identity_gate(state: WorkflowState) -> dict:
     return {"identity_status": "needs_more_information", "identity_reasons": missing}
 
 
-def _branch_node(branch_id: str, branch: Branch):
+Specialist = Callable[[CaseRequest, IdentityResolution], BranchResult]
+
+
+def _branch_node(branch_id: str, branch, *, requires_identity: bool = False):
     def run(state: WorkflowState) -> dict:
         started_at = datetime.now(UTC)
         try:
-            result = branch(state["request"])
+            result = (branch(state["request"], state["identity_resolution"])
+                      if requires_identity else branch(state["request"]))
             result.branch_id = branch_id
         except Exception as exc:  # noqa: BLE001 - isolate failures at the specialist boundary
             result = BranchResult(
@@ -177,10 +185,13 @@ def assess_case(state: WorkflowState) -> dict:
     assessment = Assessment(
         risk_score=None,
         score_status="not_scored_policy_not_configured",
-        reasons=["A validated scoring policy is not configured.", *[f"Branch failed: {name}." for name in failed], *limitations],
+        reasons=["A validated scoring policy is not configured.", *[f"Branch failed: {name}." for name in failed],
+                 *limitations, *(state["validation"].limitations if state.get("validation") else [])],
         disposition=Disposition.ANALYST_REVIEW,
     )
     status = CaseStatus.COMPLETED_WITH_GAPS if limitations or failed else CaseStatus.COMPLETED
+    if state.get("validation") and state["validation"].status == "completed_with_gaps":
+        status = CaseStatus.COMPLETED_WITH_GAPS
     result = {"identity_status": identity_status, "assessment": assessment, "status": status}
     if identity_resolution is not None:
         result["identity_resolution"] = identity_resolution
@@ -198,8 +209,13 @@ def _dispatch(branch_ids: list[str]):
 
 def build_case_graph(branches: dict[str, Branch] | None = None,
                      source_mode: SourceMode = SourceMode.DEMO_FIXTURES, *,
-                     aggregator: AggregationService | None = None):
-    branch_map = branches if branches is not None else branches_for_mode(SourceMode.DEMO_FIXTURES)
+                     aggregator: AggregationService | None = None,
+                     specialists: dict[str, Specialist] | None = None):
+    branch_map = dict(branches if branches is not None else branches_for_mode(SourceMode.DEMO_FIXTURES))
+    injected = specialists or {}
+    if injected and (source_mode != SourceMode.GLEIF_LIVE or set(injected) & set(branch_map)):
+        raise ValueError("Injected specialists require live identity and distinct branch names.")
+    branch_map.update(injected)
     if not branch_map:
         raise ValueError("At least one specialist branch is required.")
     live_identity = source_mode == SourceMode.GLEIF_LIVE
@@ -209,9 +225,11 @@ def build_case_graph(branches: dict[str, Branch] | None = None,
     graph.add_node("identity_gate", identity_gate)
     graph.add_node("assess_incomplete", assess_case)
     graph.add_node("compare", lambda state: compare_branches(state, aggregator))
+    graph.add_node("validate", lambda state: {"validation": EvidenceValidator().validate(
+        state["request"], state.get("branches", []), state["aggregation"], state.get("identity_resolution"))})
     graph.add_node("assess", assess_case)
     for branch_id, branch in branch_map.items():
-        graph.add_node(branch_id, _branch_node(branch_id, branch))
+        graph.add_node(branch_id, _branch_node(branch_id, branch, requires_identity=branch_id in injected))
 
     graph.add_edge(START, "identity_gate")
     graph.add_conditional_edges(
@@ -223,30 +241,35 @@ def build_case_graph(branches: dict[str, Branch] | None = None,
     if live_identity:
         graph.add_node("resolve_identity", assess_case)
         graph.add_edge("registry", "resolve_identity")
-        specialists = [name for name in branch_map if name != "registry"]
+        specialist_ids = [name for name in branch_map if name != "registry"]
 
         def dispatch_resolved(state: WorkflowState):
             if state["identity_status"] != "resolved_by_exact_lei_and_name":
                 return END
-            if not specialists:
+            if not specialist_ids:
                 return "compare"
-            return [Send(name, {"request": state["request"]}) for name in specialists]
+            return [Send(name, {"request": state["request"],
+                                "identity_resolution": state["identity_resolution"]})
+                    for name in specialist_ids]
 
         graph.add_conditional_edges("resolve_identity", dispatch_resolved,
-                                    [END, "compare", *specialists])
-        if specialists:
-            graph.add_edge(specialists, "compare")
+                                    [END, "compare", *specialist_ids])
+        if specialist_ids:
+            graph.add_edge(specialist_ids, "compare")
     else:
         graph.add_edge(list(branch_map), "compare")
-    graph.add_edge("compare", "assess")
+    graph.add_edge("compare", "validate")
+    graph.add_edge("validate", "assess")
     graph.add_edge("assess", END)
     return graph.compile()
 
 
 def run_case(request: CaseRequest, branches: dict[str, Branch] | None = None, *,
-             ingestion_pipeline=None, aggregator: AggregationService | None = None) -> CaseResult:
+             ingestion_pipeline=None, aggregator: AggregationService | None = None,
+             specialists: dict[str, Specialist] | None = None) -> CaseResult:
     branch_map = branches if branches is not None else branches_for_mode(request.source_mode, ingestion_pipeline)
-    state = build_case_graph(branch_map, request.source_mode, aggregator=aggregator).invoke({"request": request})
+    state = build_case_graph(branch_map, request.source_mode, aggregator=aggregator,
+                             specialists=specialists).invoke({"request": request})
     return CaseResult(
         case_id=request.case_id,
         party=request.party,
@@ -256,5 +279,6 @@ def run_case(request: CaseRequest, branches: dict[str, Branch] | None = None, *,
         branches=state.get("branches", []),
         comparison_board=state.get("comparison_board", []),
         aggregation=state.get("aggregation"),
+        validation=state.get("validation"),
         assessment=state["assessment"],
     )

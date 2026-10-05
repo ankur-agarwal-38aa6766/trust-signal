@@ -1,5 +1,12 @@
 # TrustSignal Complete Implementation Plan
 
+> Direction update (2026-10-04): the hackathon scope is closed. This design is
+> retained for architectural context; hackathon deadlines, submissions and demo-only
+> defaults are superseded. Use [future scope](future-scope.md),
+> [project context](project-context.md) and [development backlog](development-backlog.md)
+> for current open-source decisions and actionable work. Dated implementation
+> claims and estimates below are not current verification or delivery commitments.
+
 **Planning baseline:** 2 October 2026. This is the authoritative execution backlog for the worldwide TrustSignal solution and Snowflake CoCo hackathon release. Estimates assume two engineers with access to the required Snowflake features and selected source accounts; they are planning estimates, not delivery commitments.
 
 ## 1. Delivery objective
