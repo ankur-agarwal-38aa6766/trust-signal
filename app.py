@@ -7,8 +7,23 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 
+from trust_signal.connectors.gleif import GleifAdapter
 from trust_signal.models import CaseRequest, SourceMode
 from trust_signal.orchestration.case_graph import run_case
+
+
+def find_gleif_candidates(query: str, limit: int = 5) -> list[dict]:
+    """Live search official GLEIF API for legal entity candidates by name."""
+    if not query or len(query.strip()) < 2:
+        return []
+    try:
+        with GleifAdapter(timeout=4.0) as adapter:
+            batches = list(adapter.search_by_name(query.strip(), page_size=limit, max_pages=1))
+            if batches and batches[0].records:
+                return batches[0].records[:limit]
+    except Exception:  # noqa: BLE001
+        return []
+    return []
 
 st.set_page_config(
     page_title="TrustSignal CORE | Entity Intelligence",
@@ -199,6 +214,7 @@ with tab_intake:
 
             legal_name = st.text_input(
                 "Official Registered Legal Entity Name",
+                value=st.session_state.get("prefill_legal_name", ""),
                 placeholder="e.g. ABC Trading Ltd or Microsoft Corporation",
                 help="Official name registered with Companies House, GLEIF, or national registry.",
             )
@@ -207,19 +223,23 @@ with tab_intake:
             with c1:
                 jurisdiction = st.text_input(
                     "Jurisdiction code",
+                    value=st.session_state.get("prefill_jurisdiction", ""),
                     placeholder="e.g. GB, US-WA, NO",
                 )
                 registration_id = st.text_input(
                     "Registration ID",
+                    value=st.session_state.get("prefill_registration_id", ""),
                     placeholder="e.g. 0984721",
                 )
             with c2:
                 lei = st.text_input(
                     "LEI",
+                    value=st.session_state.get("prefill_lei", ""),
                     placeholder="20-character ISO 17442 LEI (e.g. 5493001KJTIIGC8Y1R12)",
                 )
                 website = st.text_input(
                     "Website",
+                    value=st.session_state.get("prefill_website", ""),
                     placeholder="https://example.org",
                 )
 
@@ -246,9 +266,26 @@ with tab_intake:
                         res = run_case(req)
                         st.session_state["case_result"] = res
                         if res.status.value == "needs_more_information":
-                            st.warning("⚠️ Identity Gate: More identity information is needed before research can run.")
+                            st.warning("More identity information is needed before research can run.")
                             for r in res.assessment.reasons:
-                                st.markdown(f"- Missing: `{r}`")
+                                st.markdown(r)
+                            
+                            # Live candidate lookup from official GLEIF registry
+                            cands = find_gleif_candidates(legal_name.strip(), limit=4)
+                            if cands:
+                                st.markdown(f"**🔍 Live Candidates Found in Official GLEIF Registry for *'{legal_name.strip()}'*:**")
+                                st.caption("Select a confirmed entity below to auto-populate credentials and launch research:")
+                                for c_idx, cand in enumerate(cands):
+                                    cc1, cc2 = st.columns([4, 1])
+                                    with cc1:
+                                        st.markdown(f"🏢 **{cand['legal_name']}** · LEI: `{cand['lei']}` · Jur: `{cand.get('jurisdiction') or 'Global'}`")
+                                    with cc2:
+                                        if st.button("Select & Run", key=f"btn_cand_select_{c_idx}"):
+                                            st.session_state["prefill_legal_name"] = cand["legal_name"]
+                                            st.session_state["prefill_lei"] = cand["lei"]
+                                            st.session_state["prefill_jurisdiction"] = cand.get("jurisdiction") or ""
+                                            st.session_state["case_result"] = run_case(CaseRequest(party={"legal_name": cand["legal_name"], "jurisdiction": cand.get("jurisdiction"), "lei": cand["lei"]}, source_mode=SourceMode.DEMO_FIXTURES))
+                                            st.rerun()
                         else:
                             st.success(f"✅ Research pipeline completed for **{legal_name.strip()}**! Switch to the **Review & Dossier** tab above to inspect the full evaluation.")
                             sc1, sc2, sc3 = st.columns(3)
@@ -275,6 +312,35 @@ with tab_intake:
                 st.rerun()
 
     with col_topology:
+        st.markdown("""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(15,23,42,0.04); margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F1F5F9; padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+            <span style="font-weight: 700; font-size: 13px; color: #0F172A;">⚡ Live Global LEI Finder</span>
+            <span style="font-size: 11px; font-weight: 700; background: #ECFDF5; color: #059669; padding: 2px 8px; border-radius: 9999px;">api.gleif.org Active</span>
+          </div>
+          <p style="font-size: 12px; color: #64748B; margin-bottom: 0.5rem;">Search official registers by company name to auto-discover LEI & jurisdiction in real time:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        search_kw = st.text_input("Live Entity Search (Official Global Registers)", placeholder="e.g. Microsoft, Equinor, Barclays, Apple, Tesla...", label_visibility="collapsed")
+        if search_kw.strip():
+            with st.spinner(f"Querying GLEIF for '{search_kw.strip()}'..."):
+                found = find_gleif_candidates(search_kw.strip(), limit=4)
+            if found:
+                for s_idx, ent in enumerate(found):
+                    sc1, sc2 = st.columns([3, 1])
+                    with sc1:
+                        st.markdown(f"**{ent['legal_name']}**<br><span style='font-size:11px; color:#64748B;'>LEI: <code>{ent['lei']}</code> · Jur: {ent.get('jurisdiction') or 'Global'}</span>", unsafe_allow_html=True)
+                    with sc2:
+                        if st.button("Use", key=f"btn_search_use_{s_idx}"):
+                            st.session_state["prefill_legal_name"] = ent["legal_name"]
+                            st.session_state["prefill_lei"] = ent["lei"]
+                            st.session_state["prefill_jurisdiction"] = ent.get("jurisdiction") or ""
+                            st.session_state["case_result"] = run_case(CaseRequest(party={"legal_name": ent["legal_name"], "jurisdiction": ent.get("jurisdiction"), "lei": ent["lei"]}, source_mode=SourceMode.DEMO_FIXTURES))
+                            st.rerun()
+                    st.divider()
+            else:
+                st.caption(f"No active LEI records found matching '{search_kw.strip()}'.")
+
         st.markdown("""
         <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(15,23,42,0.04); margin-bottom: 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F1F5F9; padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
