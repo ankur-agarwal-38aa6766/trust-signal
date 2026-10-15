@@ -11,5 +11,5 @@ Apply migrations through V007 before deploying. Generated tasks are suspended;
 child activation, one-off execution and scheduled activation are separate files.
 Nothing is deployed by the generator.
 
-See [the orchestration guide](../../docs/snowflake-orchestration.md) for account
+See [the orchestration guide](../../docs/operations/snowflake-workflows.md) for account
 preflight, runtime requirements, role/EAI setup, deployment order and recovery.

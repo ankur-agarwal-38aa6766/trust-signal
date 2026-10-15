@@ -2,7 +2,7 @@
 
 The complete backend initialization entrypoint is
 `python -m trust_signal.persistence.initialize`. See
-[the onboarding guide](../../docs/snowflake-initialization.md). It assembles
+[the onboarding guide](../../docs/operations/snowflake-initialization.md). It assembles
 all versioned migrations and workflow artifacts into one ordered installation
 bundle with separately reviewed activation. `MIGRATION_HISTORY.sql` defines the
 checksum ledger used by this flow.

@@ -8,6 +8,7 @@ __pycache__/
 .env.*
 !.env.example
 .streamlit/secrets.toml
+ui/streamlit/secrets.toml
 snowflake/.env
 outputs/
 snowflake/build/

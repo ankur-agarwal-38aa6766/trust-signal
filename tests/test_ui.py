@@ -6,7 +6,7 @@ from trust_signal.models import SourceMode
 
 
 def test_intake_runs_and_renders_the_demo_case():
-    app = AppTest.from_file(Path(__file__).parents[1] / "app.py").run(timeout=15)
+    app = AppTest.from_file(Path(__file__).parents[1] / "ui" / "app.py").run(timeout=15)
     app.text_input[0].set_value("Example Organization Ltd")
     app.text_input[1].set_value("GB")
     app.text_input[2].set_value("00000000")
@@ -26,7 +26,7 @@ def test_live_mode_without_lei_shows_candidate_confirmation(monkeypatch):
             BranchResult(branch_id="registry", status=BranchStatus.COMPLETED)})
 
     monkeypatch.setattr("trust_signal.orchestration.case_graph.run_case", name_discovery)
-    app = AppTest.from_file(Path(__file__).parents[1] / "app.py").run(timeout=15)
+    app = AppTest.from_file(Path(__file__).parents[1] / "ui" / "app.py").run(timeout=15)
     app.radio[0].set_value(SourceMode.GLEIF_LIVE)
     app.text_input[0].set_value("Example Organization Ltd")
     app.button[0].click().run(timeout=15)
