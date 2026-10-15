@@ -11,9 +11,12 @@ from trust_signal.application.contracts import (
     IdentityCandidateView,
     IdentitySearchCommand,
     IdentitySearchResult,
+    IdentityVerificationCommand,
+    IdentityVerificationResult,
     SubmitCaseCommand,
     TrustSignalApplication,
 )
+from trust_signal.application.identity import LiveIdentityService
 from trust_signal.models import CaseRequest, CaseResult, SourceMode
 from trust_signal.orchestration import case_graph
 
@@ -38,6 +41,10 @@ class InMemoryApplication(TrustSignalApplication):
             coverage="nominal" if candidates else "no_match",
             limitations=["In-memory test simulation"] if not candidates else [],
         )
+
+    def verify_identity(self, command: IdentityVerificationCommand) -> IdentityVerificationResult:
+        return IdentityVerificationResult(status="demo", legal_name=command.legal_name,
+                                          lei=command.lei, jurisdiction=command.jurisdiction)
 
     def submit_case(self, command: SubmitCaseCommand) -> CaseReceipt:
         case_id = f"case_{uuid.uuid4().hex[:8]}"
@@ -71,11 +78,17 @@ class InMemoryApplication(TrustSignalApplication):
 class LocalSynchronousApplication(TrustSignalApplication):
     """Local synchronous application that wraps run_case for local demo/development."""
 
-    def __init__(self) -> None:
+    def __init__(self, ingestion_pipeline=None) -> None:
         self._cases: dict[str, CaseView] = {}
+        self._identity = LiveIdentityService(ingestion_pipeline)
+
+    def verify_identity(self, command: IdentityVerificationCommand) -> IdentityVerificationResult:
+        return self._identity.verify(command)
 
     def search_identity(self, command: IdentitySearchCommand) -> IdentitySearchResult:
-        # Run synchronous name discovery without LEI
+        if command.source_mode == SourceMode.GLEIF_LIVE.value:
+            return self._identity.search(command)
+        # Demo discovery remains explicitly separate from live GLEIF.
         source_mode = (
             SourceMode.GLEIF_LIVE
             if command.source_mode == SourceMode.GLEIF_LIVE.value or command.source_mode == SourceMode.GLEIF_LIVE

@@ -6,6 +6,7 @@ from pathlib import Path
 # Streamlit adds the script's directory (ui/), not necessarily its parent.
 # Resolve the UI package from this file for launches from any working directory.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import streamlit as st
 

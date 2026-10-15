@@ -9,22 +9,46 @@ from html import escape
 
 import streamlit as st
 
-from trust_signal.application.contracts import IdentitySearchCommand, SubmitCaseCommand
+from trust_signal.application.contracts import (
+    IdentitySearchCommand,
+    IdentityVerificationCommand,
+    SubmitCaseCommand,
+)
 from trust_signal.models import SourceMode
+from trust_signal.resolution.lei import lei_checksum_state
 from ui.components import badge, eyebrow, go, icon, message, metrics, node, section, title
 from ui.design_data import CASES, FINDINGS, SOURCES
 from ui.diagrams import TASK_GRAPH
+from ui.identity_status import Indicator, search_indicator, verification_indicator
 
 
 def service():
     return st.session_state["trust_signal_app"]
 
 
-def set_candidate(name: str, lei: str, jurisdiction: str | None) -> None:
+def identity_signature():
+    return (st.session_state.get("input_legal_name", "").strip(),
+            st.session_state.get("input_lei", "").strip().upper(),
+            st.session_state.get("input_jurisdiction", "").strip(),
+            str(st.session_state.get("research_source_mode", SourceMode.DEMO_FIXTURES)))
+
+
+def invalidate_identity() -> None:
+    st.session_state.pop("identity_verification", None)
+    st.session_state.pop("verified_signature", None)
+    st.session_state.pop("pending_verification", None)
+
+
+def set_candidate(name: str, lei: str, jurisdiction: str | None, candidate_id: str | None = None) -> None:
+    invalidate_identity()
     st.session_state.update(input_legal_name=name, input_lei=lei,
                             input_jurisdiction=jurisdiction or "")
-    # Selecting a result must not issue another source search on the next rerender.
     st.session_state["last_search"] = (name, st.session_state.get("research_source_mode"))
+    if candidate_id is not None:
+        result = st.session_state.get("search_result")
+        if result and any(item.candidate_id == candidate_id and item.lei == lei
+                          and item.legal_name == name for item in result.candidates):
+            st.session_state["pending_verification"] = True
 
 
 def search_candidates() -> None:
@@ -33,16 +57,48 @@ def search_candidates() -> None:
     query = (name, mode)
     if st.session_state.get("last_search") == query:
         return
+    invalidate_identity()
     st.session_state["last_search"] = query
     st.session_state["search_result"] = None
     st.session_state.pop("search_error", None)
-    if len(name) < 2:
-        return
-    try:
-        st.session_state["search_result"] = service().search_identity(
-            IdentitySearchCommand(legal_name=name, source_mode=mode.value))
-    except Exception:  # noqa: BLE001 - provider errors may contain credentials
-        st.session_state["search_error"] = "Identity search could not be completed. Check the configured source and retry."
+    st.session_state["pending_search"] = len(name) >= 2
+
+
+def retry_search() -> None:
+    st.session_state.pop("last_search", None)
+    search_candidates()
+
+
+def request_verification() -> None:
+    invalidate_identity()
+    st.session_state["pending_verification"] = True
+
+
+def run_identity_updates() -> bool:
+    mode = st.session_state.get("research_source_mode", SourceMode.DEMO_FIXTURES)
+    if st.session_state.pop("pending_search", False):
+        try:
+            with st.spinner("Searching the official GLEIF registry…" if mode == SourceMode.GLEIF_LIVE else "Searching demo candidates…"):
+                st.session_state["search_result"] = service().search_identity(IdentitySearchCommand(
+                    legal_name=st.session_state["input_legal_name"].strip(), source_mode=mode.value))
+        except Exception:  # noqa: BLE001 - provider messages may contain secrets
+            st.session_state["search_error"] = "Identity search could not be completed. Retry the search."
+        return True
+    if st.session_state.pop("pending_verification", False):
+        try:
+            with st.spinner("Verifying the selected name against its exact GLEIF LEI record…"):
+                name, lei, jurisdiction, source_mode = identity_signature()
+                st.session_state["identity_verification"] = service().verify_identity(
+                    IdentityVerificationCommand(legal_name=name, lei=lei,
+                                                jurisdiction=jurisdiction or None, source_mode=source_mode))
+                st.session_state["verified_signature"] = identity_signature()
+        except Exception:  # noqa: BLE001 - keep sensitive provider details out of the form
+            from trust_signal.application.contracts import IdentityVerificationResult
+            st.session_state["identity_verification"] = IdentityVerificationResult(
+                status="failed", error="Exact GLEIF verification failed. Retry verification.")
+            st.session_state["verified_signature"] = identity_signature()
+        return True
+    return False
 
 
 def launch_case() -> None:
@@ -71,6 +127,19 @@ def preview_notice(action: str) -> None:
     st.toast(f"{action}: design preview only. No account or research state was changed.", icon="ℹ️")
 
 
+def render_candidate(candidate, index: int) -> None:
+    info, action = st.columns([4, 1], vertical_alignment="center")
+    with info:
+        st.html(f'<div class="ts-candidate-content">{icon("apartment")}<div>'
+                f'<div class="ts-entity-name">{escape(candidate.legal_name)}</div>'
+                f'<div class="ts-entity-sub ts-mono">LEI: {escape(candidate.lei)} · '
+                f'{escape(candidate.jurisdiction or "Not stated")}</div></div></div>')
+    with action:
+        st.button("Select Match", key=f"cand_box_{candidate.candidate_id}_{index}",
+                  on_click=set_candidate,
+                  args=(candidate.legal_name, candidate.lei, candidate.jurisdiction, candidate.candidate_id))
+
+
 def intake() -> None:
     eyebrow("ENTITY ONBOARDING   ›   AUTONOMOUS RESEARCH DISPATCH   ›   INTAKE & LOOKUP",
             "1  Entity Identity    →    2  Source Scope    →    3  Agent Fan-out")
@@ -80,45 +149,76 @@ def intake() -> None:
     left, right = st.columns([7, 5], gap="large")
     with left:
         with st.container(key="card_identity"):
-            head, meta = st.columns([3, 1])
+            head, meta = st.columns([2, 1])
             with head:
                 section("Entity Identity Baseline", symbol="badge")
             with meta:
-                st.html(badge("ISO 17442", "blue"))
+                checksum = lei_checksum_state(st.session_state.get("input_lei", ""))
+                iso_tone = "green" if checksum == "valid" else "red" if checksum.startswith("invalid") else "blue"
+                iso_label = "ISO 17442 Compliant" if checksum == "valid" else "ISO 17442: Check LEI" if checksum.startswith("invalid") else "ISO 17442 Standard"
+                st.html('<span title="LEI format and check digits; not a registry or legal-status certification">'
+                        + badge(iso_label, iso_tone) + '</span>')
             st.html('<div class="ts-divider"></div>')
-            st.text_input("Official Registered Legal Entity Name", key="input_legal_name",
-                          placeholder="e.g. Acme Sovereign Holdings PLC or Microsoft Corporation",
-                          on_change=search_candidates)
+            mode = st.session_state.get("research_source_mode", SourceMode.DEMO_FIXTURES)
             result = st.session_state.get("search_result")
+            verification = st.session_state.get("identity_verification")
+            if st.session_state.get("verified_signature") != identity_signature():
+                verification = None
+            indicator = search_indicator(mode, result, pending=st.session_state.get("pending_search", False),
+                                         error=bool(st.session_state.get("search_error")) or bool(verification and verification.status == "failed"))
+            verified = verification_indicator(verification, mode)
+            if st.session_state.get("pending_verification") and mode == SourceMode.GLEIF_LIVE:
+                verified = Indicator("Verifying…", "blue", "progress_activity")
+            with st.container(key="name_field"):
+                st.html(f'<div class="ts-field-label"><b>Official Registered Legal Entity Name</b>'
+                        f'<span class="ts-search-state {indicator.tone}" role="status">{icon(indicator.symbol)} '
+                        f'{escape(indicator.label)}</span></div>')
+                st.text_input("Official Registered Legal Entity Name", key="input_legal_name",
+                              placeholder="e.g. Acme Sovereign Holdings PLC or Microsoft Corporation",
+                              label_visibility="collapsed", on_change=search_candidates,
+                              help="Suggestions refresh on Enter or when you leave the field.")
+                st.html(f'<span class="ts-name-badge {verified.tone}" role="status" '
+                        'title="Verified means the selected name and LEI match the exact GLEIF record. It does not establish clean risk.">'
+                        f'{icon(verified.symbol)} {escape(verified.label)}</span>')
+            if run_identity_updates():
+                st.rerun()
             if st.session_state.get("search_error"):
                 st.error(st.session_state["search_error"])
-                st.button("Retry identity search", on_click=lambda: (
-                    st.session_state.pop("last_search", None), search_candidates()), key="retry_search")
-            if result and result.error:
-                st.error(result.error)
+                st.button("Retry identity search", on_click=retry_search, key="retry_search")
+            if result and (result.error or result.coverage in {"failed", "blocked"}):
+                st.error(result.error or "GLEIF search is unavailable. Retry the search.")
+                if result.retry_after:
+                    st.caption(f"Source Retry-After: {result.retry_after}")
+                st.button("Retry identity search", on_click=retry_search, key="retry_source_error")
             elif result and result.candidates:
                 with st.container(key="candidate_panel"):
                     st.html('<div class="ts-label">TOP GLEIF MASTER FILE CANDIDATES</div>')
                     for index, candidate in enumerate(result.candidates):
-                        info, action = st.columns([4, 1], vertical_alignment="center")
-                        with info:
-                            st.html(f'<div class="ts-entity-name">{escape(candidate.legal_name)}</div>'
-                                    f'<div class="ts-entity-sub ts-mono">LEI: {escape(candidate.lei)} · '
-                                    f'{escape(candidate.jurisdiction or "Not stated")}</div>')
-                        with action:
-                            st.button("Select Match", key=f"cand_box_{candidate.candidate_id}_{index}",
-                                      on_click=set_candidate,
-                                      args=(candidate.legal_name, candidate.lei, candidate.jurisdiction))
+                        with st.container(key=f"candidate_{index}"):
+                            render_candidate(candidate, index)
                     st.caption(f"{len(result.candidates)} candidates · {result.coverage}. Selection requires exact identity confirmation.")
             elif result:
                 st.info("No registered entity candidates found. Adjust the name or enter a known LEI.")
             first, second = st.columns(2)
             with first:
                 st.text_input("Primary Statutory Jurisdiction", key="input_jurisdiction",
-                              placeholder="e.g. GB, US-WA, NO")
+                              placeholder="e.g. GB, US-WA, NO", on_change=invalidate_identity)
             with second:
+                checksum_label = {"empty": "Modulo 97-10: Not checked", "incomplete": "Modulo 97-10: Incomplete",
+                                  "valid": "Modulo 97-10: Valid", "invalid_format": "LEI: Invalid format",
+                                  "invalid_checksum": "Modulo 97-10: Invalid"}[checksum]
+                checksum_tone = "green" if checksum == "valid" else "red" if checksum.startswith("invalid") else "muted"
+                st.html(f'<div class="ts-checksum {checksum_tone}" role="status">{icon("check_circle" if checksum == "valid" else "fingerprint")} {checksum_label}</div>')
                 st.text_input("ISO 17442 LEI (20 Characters)", key="input_lei",
-                              placeholder="e.g. INR2EJN1ERAN0W5ZP974", max_chars=20)
+                              placeholder="e.g. INR2EJN1ERAN0W5ZP974", max_chars=20, on_change=invalidate_identity,
+                              help="Format and check digits only. A valid checksum does not prove the LEI exists.")
+            if verification and verification.error:
+                st.error(verification.error)
+            if mode == SourceMode.GLEIF_LIVE and checksum == "valid" and verified.label != "Verified":
+                st.button("Verify name and LEI", icon=":material/verified_user:",
+                          on_click=request_verification, key="verify_identity")
+            if verification and verification.checked_at:
+                st.caption(f"Identity check: {verification.checked_at} · session-local evidence")
             first, second = st.columns(2)
             with first:
                 st.text_input("National Registration ID", key="input_registration_id",

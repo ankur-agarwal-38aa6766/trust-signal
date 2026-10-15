@@ -47,6 +47,29 @@ class IdentitySearchResult:
     limitations: list[str] = field(default_factory=list)
     raw_observation_ids: list[str] = field(default_factory=list)
     error: str | None = None
+    http_status: int | None = None
+    retry_after: str | None = None
+    checked_at: str | None = None
+
+
+@dataclass(frozen=True)
+class IdentityVerificationCommand:
+    legal_name: str
+    lei: str
+    jurisdiction: str | None = None
+    source_mode: str = "gleif_live"
+
+
+@dataclass(frozen=True)
+class IdentityVerificationResult:
+    status: str = "unverified"
+    legal_name: str = ""
+    lei: str = ""
+    jurisdiction: str | None = None
+    source_run_id: str | None = None
+    observation_ids: list[str] = field(default_factory=list)
+    checked_at: str | None = None
+    error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -85,6 +108,10 @@ class TrustSignalApplication(Protocol):
 
     def search_identity(self, command: IdentitySearchCommand) -> IdentitySearchResult:
         """Search entity identity by legal name; discovers candidates without running specialists."""
+        ...
+
+    def verify_identity(self, command: IdentityVerificationCommand) -> IdentityVerificationResult:
+        """Confirm a selected name/LEI against a fresh exact registry record."""
         ...
 
     def submit_case(self, command: SubmitCaseCommand) -> CaseReceipt:
