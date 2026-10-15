@@ -1,8 +1,8 @@
 # Shared UI settings, loaded by ui/run.py.
 [theme]
 base = "light"
-primaryColor = "#4F46E5"
-backgroundColor = "#F8FAFC"
+primaryColor = "#2563EB"
+backgroundColor = "#F8F9FF"
 secondaryBackgroundColor = "#FFFFFF"
 textColor = "#0F172A"
 font = "sans serif"

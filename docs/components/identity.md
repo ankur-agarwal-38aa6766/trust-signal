@@ -6,6 +6,54 @@ validation, temporal entity merging and analyst-confirmed associations are later
 
 ## Flow and boundaries
 
+### Intake journey
+
+1. Enter a legal name and search GLEIF. Show candidates; do not dispatch specialists.
+2. Select a candidate. Perform a fresh exact-LEI lookup through the ingestion
+   pipeline, retain its response, and check name/LEI/jurisdiction consistency.
+3. On confirmation, populate national registration ID, registration authority,
+   registered address and aliases. Show headquarters address, legal form, entity
+   status and LEI registration status separately. Retain all returned record
+   attributes, including dates and additional fields, in the profile. Dedicated
+   relationship and mapped-identifier endpoints are not called at this step.
+4. Allow **Save Draft Intake** without research. The current local UI saves the
+   inputs and identity profile only in Streamlit session state; durable draft
+   saving and reopening remain pending.
+5. **Launch Autonomous Research Pipeline** is the explicit research boundary.
+   Live mode requires a matching confirmed identity in both UI and local backend.
+   Fixture search also avoids the case graph; fixture research is illustrative.
+
+Implementation: `LiveIdentityService` in `src/trust_signal/application/identity.py`,
+the shared `EntityRecord` contract, `GleifAdapter`, and `ui/views.py`.
+The local application retains evidence in memory unless durable stores are injected.
+The UI's editable intake fields and the retrieved source profile remain separate;
+editing a name, LEI or jurisdiction revokes the displayed confirmation.
+
+### Next bounded implementation steps
+
+| Step | Completion check |
+|---|---|
+| Durable draft storage | Save and reopen an intake plus profile and provenance after an application restart; no research requests occur. Provider implementations own storage. |
+| Actual source readiness | Replace sample coverage with the source registry catalog. Distinguish implemented, configured, permitted, applicable, and health-checked sources; configuration alone is not a live health check. |
+| Explicit specialist dispatch | After launch, plan applicable source operations from the confirmed identity; use existing research handlers and ingestion, with independent source-run outcomes and partial-coverage reporting. |
+| Adapter provisioning | Validate configuration and access, perform a bounded test retrieval with evidence readback, and only then permit activation. An unimplemented connector remains pending. |
+
+Adapter provisioning needs: stable source ID/version; adapter implementation and
+supported operations; specialist/category and jurisdiction scope; required input
+identifiers; trusted endpoint and pagination rules; authentication mechanism and
+secret reference; source access/licensing approval where required; timeout,
+rate-limit and retry policy; parser/schema and normalized field mappings; provider
+evidence/run stores; and a bounded readiness check. The UI must not accept secrets
+or arbitrary executable adapter code as configuration.
+
+The registry currently includes GLEIF, Companies House, Norway, UN, OFAC, UK, EU,
+Australia, World Bank, FCA, Gazette, Find Case Law and GDELT. Its catalog is an
+implementation inventory, not proof that every source is dispatched by the UI.
+The default live application case path currently wires the GLEIF registry branch;
+it does not yet fan out across all these adapters. Companies House has a paused
+verification marker and needs an API key; Find Case Law requires recorded
+computational-analysis permission. Provider composition must honor these gates.
+
 ```mermaid
 flowchart LR
     A[Party input] --> R[Entity resolver]

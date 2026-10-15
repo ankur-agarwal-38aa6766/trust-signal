@@ -1,8 +1,8 @@
 """Registry research branches built on the source-adapter boundary."""
 
-from pathlib import Path
+# Preserve the existing export used by legacy configuration probes.
+from pathlib import Path  # noqa: F401 - compatibility export for existing configuration probes
 
-from trust_signal.config import environment_config
 from trust_signal.connectors.base import EntityRecord
 from trust_signal.connectors.registry import SourceRequest, default_registry
 from trust_signal.domain.identity import IdentityCandidate
@@ -15,21 +15,18 @@ from trust_signal.models import (
     Finding,
     SourceMode,
 )
-from trust_signal.persistence.connection import application_stores
 from trust_signal.resolution.evidence import stable_id
 from trust_signal.resolution.resolver import EntityResolver
 
 
 def gleif_registry_branch(request: CaseRequest, pipeline: IngestionPipeline | None = None) -> BranchResult:
     if pipeline is None:
-        config = Path(".env")
-        if not config.is_file():
-            return BranchResult(branch_id="registry", status=BranchStatus.FAILED,
-                                error="Snowflake ingestion configuration is required.",
-                                limitations=["No source was fetched or attributed without evidence storage."])
-        with application_stores(config) as (observations, runs):
-            configured = IngestionPipeline(default_registry(environment_config(config)), observations, runs)
-            return gleif_registry_branch(request, configured)
+        # Platform-independent local execution using in-memory stores
+        from trust_signal.persistence.memory import InMemoryObservationStore, InMemorySourceRunStore
+        obs_store = InMemoryObservationStore()
+        run_store = InMemorySourceRunStore()
+        configured = IngestionPipeline(default_registry({}), obs_store, run_store)
+        return gleif_registry_branch(request, configured)
 
     name_search = not request.party.lei
     result = pipeline.ingest(SourceRequest(source_id="gleif_lei_api",

@@ -116,8 +116,26 @@ class GleifAdapter:
             jurisdiction=jurisdiction,
             registration_status=registration.get("status"),
             entity_status=entity.get("status"),
+            registration_id=entity.get("registeredAs") or None,
+            registration_authority=(entity.get("registeredAt") or {}).get("id"),
+            legal_form=(entity.get("legalForm") or {}).get("id"),
+            registered_address=self._address(entity.get("legalAddress")),
+            headquarters_address=self._address(entity.get("headquartersAddress")),
+            aliases=list(dict.fromkeys(
+                item["name"] for field in ("otherNames", "transliteratedOtherNames")
+                for item in (entity.get(field) or []) if item.get("name")
+            )),
+            source_attributes=attributes,
         )
         return EntityLookup(entity=record, observation=observation)
+
+    @staticmethod
+    def _address(address: dict | None) -> str | None:
+        if not address:
+            return None
+        parts = [*(address.get("addressLines") or []), address.get("city"),
+                 address.get("region"), address.get("postalCode"), address.get("country")]
+        return ", ".join(part for part in parts if part) or None
 
     def search_by_name(self, name: str, page_size: int = 20, max_pages: int = 5) -> Iterator[SourceBatch]:
         if not name.strip() or not 1 <= page_size <= 100 or not 1 <= max_pages <= 100:

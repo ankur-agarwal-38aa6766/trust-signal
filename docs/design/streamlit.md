@@ -5,8 +5,18 @@ is the selected application; [UI README](../../ui/README.md) owns launch setting
 [Status](../status.md) owns implemented behavior and
 [architecture](../architecture/overview.md) owns application flow.
 
-Current intake runs the local graph; dossier/queue/source/operations content includes
-illustrative data. Static scores, named actors and Cortex health wording do not prove
+The native Streamlit implementation now follows the supplied Stitch/Figma HTML
+screens: shared header/navigation, identity intake, reviewer dossier, queue, source
+cards and operations graph. Widgets and callbacks remain native Streamlit; no page
+iframe is used. The supplied screen PNG exports are failed-fetch placeholders, so
+the exported HTML is the visual reference.
+
+Current intake calls the existing application-service boundary, which runs the
+local graph. Candidate selection, local filters and CSV/JSON downloads are wired;
+sample operational and review actions remain explicitly identified previews.
+Dossier/queue/source/operations content includes illustrative data. Submitted
+results render separately from the sample dossier and its score. Named actors and
+sample Cortex health wording do not prove
 scoring, authentication, model execution or measured telemetry. The target connects
 these same screens to durable provider commands/read projections.
 
