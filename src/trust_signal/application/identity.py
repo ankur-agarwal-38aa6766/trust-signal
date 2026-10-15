@@ -9,6 +9,7 @@ from trust_signal.application.contracts import (
     IdentityVerificationCommand,
     IdentityVerificationResult,
 )
+from trust_signal.connectors.base import EntityRecord
 from trust_signal.connectors.registry import SourceRequest, default_registry
 from trust_signal.domain.identity import IdentityCandidate, ResolutionStatus
 from trust_signal.ingestion.pipeline import IngestionPipeline
@@ -82,6 +83,8 @@ class LiveIdentityService:
             if result.coverage != "available" or len(result.records) != 1:
                 raise ValueError("Exact identity evidence is incomplete")
             record = result.records[0]
+            profile = EntityRecord.model_validate({key: value for key, value in record.items()
+                                                   if key != "observation_ids"})
             ids = record["observation_ids"]
             verified_ids = {receipt.observation_id for receipt in result.receipts
                             if receipt.verified_rows == 1}
@@ -99,6 +102,7 @@ class LiveIdentityService:
                 status="verified" if confirmed else "conflict", legal_name=candidate.legal_name,
                 lei=candidate.lei, jurisdiction=candidate.jurisdiction, source_run_id=result.run_id,
                 observation_ids=ids, checked_at=checked_at,
+                profile=profile,
                 error=None if confirmed else "The selected name or jurisdiction conflicts with the exact GLEIF record.")
         except Exception:  # noqa: BLE001 - preserve unknown failures without leaking driver details
             return IdentityVerificationResult(status="failed", lei=lei, checked_at=checked_at,

@@ -36,11 +36,15 @@ class EntityRecord(Contract):
     source_record_id: str | None = None
     lei: str | None = None
     registration_id: str | None = None
+    registration_authority: str | None = None
     jurisdiction: str | None = None
     registration_status: str | None = None
     entity_status: str | None = None
     legal_form: str | None = None
     registered_address: str | None = None
+    headquarters_address: str | None = None
+    aliases: list[str] = Field(default_factory=list)
+    source_attributes: dict = Field(default_factory=dict)
 
 
 class SanctionsListing(Contract):

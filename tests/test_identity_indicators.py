@@ -12,6 +12,7 @@ from trust_signal.application.contracts import (
     IdentitySearchResult,
     IdentityVerificationCommand,
     IdentityVerificationResult,
+    SubmitCaseCommand,
 )
 from trust_signal.application.service import LocalSynchronousApplication
 from trust_signal.connectors.base import SourceBatch
@@ -203,3 +204,94 @@ def test_changing_source_mode_revokes_live_verification():
     assert 'ts-name-badge green' not in html(app)
     assert "Fixture mode · live GLEIF off" in html(app)
     assert not app.exception
+
+
+def rich_record():
+    payload = record()
+    entity = payload["data"]["attributes"]["entity"]
+    entity.update(registeredAs="600413485", registeredAt={"id": "RA000641"},
+                  legalForm={"id": "CORP"},
+                  legalAddress={"addressLines": ["ONE MICROSOFT WAY"], "city": "REDMOND",
+                                "region": "US-WA", "postalCode": "98052", "country": "US"},
+                  headquartersAddress={"city": "REDMOND", "country": "US"},
+                  otherNames=[{"name": "Microsoft", "type": "TRADING_OR_OPERATING_NAME"}],
+                  transliteratedOtherNames=[{"name": "Microsoft"}])
+    payload["data"]["attributes"]["registration"]["nextRenewalDate"] = "2027-01-01"
+    return payload
+
+
+def test_exact_profile_is_enriched_without_running_research(monkeypatch):
+    run_case = Mock(side_effect=AssertionError("Research must not run during intake"))
+    monkeypatch.setattr("trust_signal.application.service.case_graph.run_case", run_case)
+    app = application(lambda _: httpx.Response(200, json=rich_record()))
+    result = app.verify_identity(IdentityVerificationCommand(NAME, LEI, "US-WA"))
+    assert result.status == "verified"
+    assert result.profile.registration_id == "600413485"
+    assert result.profile.registration_authority == "RA000641"
+    assert result.profile.aliases == ["Microsoft"]
+    assert "ONE MICROSOFT WAY" in result.profile.registered_address
+    assert result.profile.headquarters_address == "REDMOND, US"
+    assert result.profile.source_attributes == rich_record()["data"]["attributes"]
+    app.search_identity(IdentitySearchCommand(NAME))
+    search_app = application(lambda _: httpx.Response(200, json={"data": [record()["data"]]}))
+    search_app.search_identity(IdentitySearchCommand(NAME, source_mode="gleif_live"))
+    run_case.assert_not_called()
+
+
+def test_live_launch_requires_backend_confirmation_and_rejects_changed_identity(monkeypatch):
+    run_case = Mock()
+    monkeypatch.setattr("trust_signal.application.service.case_graph.run_case", run_case)
+    app = application(lambda _: httpx.Response(200, json=record()))
+    command = SubmitCaseCommand(NAME, LEI, "US-WA", source_mode="gleif_live")
+    with pytest.raises(ValueError, match="Confirm"):
+        app.submit_case(command)
+    app.verify_identity(IdentityVerificationCommand(NAME, LEI, "US-WA"))
+    from dataclasses import replace
+    with pytest.raises(ValueError, match="Confirm"):
+        app.submit_case(replace(command, legal_name="Other Company"))
+    run_case.assert_not_called()
+
+
+def test_confirmed_launch_passes_enriched_input_to_case_graph(monkeypatch):
+    demo = LocalSynchronousApplication()
+    receipt = demo.submit_case(SubmitCaseCommand(NAME, LEI, "US-WA"))
+    run_case = Mock(return_value=demo.get_case(receipt.case_id).result)
+    monkeypatch.setattr("trust_signal.application.service.case_graph.run_case", run_case)
+    app = application(lambda _: httpx.Response(200, json=rich_record()))
+    app.verify_identity(IdentityVerificationCommand(NAME, LEI, "US-WA"))
+    app.submit_case(SubmitCaseCommand(
+        NAME, LEI, "US-WA", registration_id="600413485", source_mode="gleif_live",
+        registration_authority="RA000641", registered_address="REDMOND, US",
+        aliases=["Microsoft"]))
+    run_case.assert_called_once()
+    party = run_case.call_args.args[0].party
+    assert party.registration_authority == "RA000641"
+    assert party.registered_address == "REDMOND, US" and party.aliases == ["Microsoft"]
+
+
+def test_profile_populates_draft_without_specialist_dispatch():
+    backend = fake_backend()
+    from trust_signal.connectors.base import EntityRecord
+    backend.verify_identity.return_value = IdentityVerificationResult(
+        status="verified", legal_name=NAME, lei=LEI, jurisdiction="US-WA",
+        observation_ids=["obs_exact"], profile=EntityRecord(
+            source_id="gleif_lei_api", legal_name=NAME, lei=LEI,
+            jurisdiction="US-WA",
+            registration_id="600413485", registration_authority="RA000641",
+            registered_address="ONE MICROSOFT WAY, REDMOND, US",
+            aliases=["Microsoft"], source_attributes={"entity": {"registeredAs": "600413485"}}))
+    app = open_live(backend)
+    app.text_input(key="input_legal_name").set_value("Microsoft").run(timeout=15)
+    app.button(key="btn_launch_pipeline").click().run(timeout=15)
+    backend.submit_case.assert_not_called()
+    app.button(key="cand_box_microsoft_0").click().run(timeout=15)
+    assert not app.exception
+    assert app.text_input(key="input_registration_id").value == "600413485"
+    assert app.multiselect(key="input_aliases").value == ["Microsoft"]
+    next(button for button in app.button if button.label == "Save Draft Intake").click().run(timeout=15)
+    draft = app.session_state["saved_draft"]
+    assert draft["identity_verification"].profile.registration_authority == "RA000641"
+    backend.submit_case.assert_not_called()
+    app.button(key="btn_launch_pipeline").click().run(timeout=15)
+    backend.submit_case.assert_called_once()
+    assert backend.submit_case.call_args.args[0].registered_address.startswith("ONE MICROSOFT")

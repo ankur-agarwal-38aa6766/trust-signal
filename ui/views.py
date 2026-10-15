@@ -92,6 +92,17 @@ def run_identity_updates() -> bool:
                     IdentityVerificationCommand(legal_name=name, lei=lei,
                                                 jurisdiction=jurisdiction or None, source_mode=source_mode))
                 st.session_state["verified_signature"] = identity_signature()
+                verification = st.session_state["identity_verification"]
+                if verification.status == "verified" and verification.profile is not None:
+                    profile = verification.profile
+                    st.session_state.update(
+                        input_jurisdiction=profile.jurisdiction or "",
+                        input_registration_id=profile.registration_id or "",
+                        input_registration_authority=profile.registration_authority or "",
+                        input_address=profile.registered_address or "",
+                        input_aliases=profile.aliases,
+                    )
+                    st.session_state["verified_signature"] = identity_signature()
         except Exception:  # noqa: BLE001 - keep sensitive provider details out of the form
             from trust_signal.application.contracts import IdentityVerificationResult
             st.session_state["identity_verification"] = IdentityVerificationResult(
@@ -106,12 +117,23 @@ def launch_case() -> None:
     if not name:
         st.session_state["intake_error"] = "Please enter a legal party name to dispatch research."
         return
+    mode = st.session_state.get("research_source_mode", SourceMode.DEMO_FIXTURES)
+    verification = st.session_state.get("identity_verification")
+    if mode == SourceMode.GLEIF_LIVE and (
+        not verification or verification.status != "verified"
+        or st.session_state.get("verified_signature") != identity_signature()
+    ):
+        st.session_state["intake_error"] = "Confirm the selected GLEIF identity before launching research."
+        return
     try:
         receipt = service().submit_case(SubmitCaseCommand(
             legal_name=name, lei=st.session_state.get("input_lei", "").strip(),
             jurisdiction=st.session_state.get("input_jurisdiction", "").strip() or None,
             registration_id=st.session_state.get("input_registration_id", "").strip() or None,
             website=st.session_state.get("input_website", "").strip() or None,
+            registration_authority=st.session_state.get("input_registration_authority", "").strip() or None,
+            registered_address=st.session_state.get("input_address", "").strip() or None,
+            aliases=st.session_state.get("input_aliases", []),
             source_mode=st.session_state.get("research_source_mode", SourceMode.DEMO_FIXTURES).value))
         view = service().get_case(receipt.case_id)
         st.session_state["case_view"] = view
@@ -225,13 +247,23 @@ def intake() -> None:
                               placeholder="e.g. CRN 09482910")
                 st.caption("Registration identifier within the declared jurisdiction")
             with second:
-                st.text_input("Statutory Headquarters Address", key="input_address",
+                st.text_input("Registered Legal Address", key="input_address",
                               placeholder="Street, city and postal code")
                 st.caption("Supplementary intake context; not an identity confirmation")
             st.multiselect("Known Trading Aliases / Doing Business As (DBA)",
-                           ["Acme Corp UK", "Sovereign Capital Ltd", "Acme Global Trust"],
+                           st.session_state.get("input_aliases", []),
                            accept_new_options=True, key="input_aliases")
-            st.caption("Address and aliases are saved in the draft; research support for these fields is pending.")
+            st.caption("Registry details populate after confirmation. Edits are submitted as intake context.")
+            if verification and verification.profile is not None:
+                with st.expander("GLEIF entity profile and source details"):
+                    profile = verification.profile
+                    st.write({"Registration authority": profile.registration_authority,
+                              "Legal form code": profile.legal_form,
+                              "Entity status": profile.entity_status,
+                              "LEI registration status": profile.registration_status,
+                              "Headquarters address": profile.headquarters_address})
+                    st.json(profile.source_attributes)
+                    st.caption("Exact LEI record attributes. Related datasets and accounting-parent lookups belong to subsequent research; no specialists have run.")
             with st.container(key="mode_selector"):
                 st.radio("Research mode", options=[SourceMode.DEMO_FIXTURES, SourceMode.GLEIF_LIVE],
                          format_func=lambda mode: "Deterministic Fixture" if mode == SourceMode.DEMO_FIXTURES else "Live GLEIF Ingestion",
@@ -245,7 +277,8 @@ def intake() -> None:
                 if st.button("Save Draft Intake", icon=":material/bookmark_border:", width="stretch"):
                     st.session_state["saved_draft"] = {key: st.session_state.get(key) for key in (
                         "input_legal_name", "input_jurisdiction", "input_lei", "input_registration_id",
-                        "input_address", "input_aliases", "input_website", "research_source_mode")}
+                        "input_registration_authority", "input_address", "input_aliases", "input_website", "research_source_mode")}
+                    st.session_state["saved_draft"]["identity_verification"] = verification
                     st.toast("Draft saved for this browser session.", icon="✅")
             with launch:
                 st.button("Launch Autonomous Research Pipeline", icon=":material/bolt:",

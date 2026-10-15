@@ -81,62 +81,28 @@ class LocalSynchronousApplication(TrustSignalApplication):
     def __init__(self, ingestion_pipeline=None) -> None:
         self._cases: dict[str, CaseView] = {}
         self._identity = LiveIdentityService(ingestion_pipeline)
+        self._verified_identity: IdentityVerificationResult | None = None
 
     def verify_identity(self, command: IdentityVerificationCommand) -> IdentityVerificationResult:
-        return self._identity.verify(command)
+        self._verified_identity = self._identity.verify(command)
+        return self._verified_identity
 
     def search_identity(self, command: IdentitySearchCommand) -> IdentitySearchResult:
+        self._verified_identity = None
         if command.source_mode == SourceMode.GLEIF_LIVE.value:
             return self._identity.search(command)
-        # Demo discovery remains explicitly separate from live GLEIF.
-        source_mode = (
-            SourceMode.GLEIF_LIVE
-            if command.source_mode == SourceMode.GLEIF_LIVE.value or command.source_mode == SourceMode.GLEIF_LIVE
-            else SourceMode.DEMO_FIXTURES
-        )
-        req = CaseRequest(
-            party={
-                "legal_name": command.legal_name,
-                "jurisdiction": command.jurisdiction,
-                "registration_id": command.registration_id,
-                "website": command.website,
-            },
-            source_mode=source_mode,
-        )
-        res = case_graph.run_case(req)
-        candidates: list[IdentityCandidateView] = []
-        # Check registry branch or top-level identity resolution
-        resolutions = []
-        if res.identity_resolution:
-            resolutions.append(res.identity_resolution)
-        for b in res.branches:
-            if b.branch_id == "registry" and b.identity_resolution:
-                resolutions.append(b.identity_resolution)
-
-        for resolution in resolutions:
-            for match in resolution.matches:
-                c = match.candidate
-                if not any(existing.candidate_id == c.candidate_id for existing in candidates):
-                    candidates.append(
-                        IdentityCandidateView(
-                            candidate_id=c.candidate_id,
-                            legal_name=c.legal_name,
-                            lei=c.lei or "",
-                            jurisdiction=c.jurisdiction,
-                            source_id=c.source_id,
-                            source_record_id=c.source_record_id,
-                            observation_ids=c.observation_ids,
-                        )
-                    )
-        branch_limitations = [lim for b in res.branches for lim in b.limitations]
-        return IdentitySearchResult(
-            candidates=candidates,
-            source_run_id=res.case_id,
-            coverage="nominal" if candidates else "no_match",
-            limitations=branch_limitations,
-        )
+        # Fixtures have no registry candidates. Discovery must never execute research.
+        return IdentitySearchResult(coverage="no_match",
+                                    limitations=["Fixture mode does not query a registry."])
 
     def submit_case(self, command: SubmitCaseCommand) -> CaseReceipt:
+        if command.source_mode == SourceMode.GLEIF_LIVE:
+            verified = self._verified_identity
+            if (verified is None or verified.status != "verified"
+                    or verified.lei != command.lei.strip().upper()
+                    or verified.legal_name.strip().casefold() != command.legal_name.strip().casefold()
+                    or (verified.jurisdiction or "").casefold() != (command.jurisdiction or "").strip().casefold()):
+                raise ValueError("Confirm the selected GLEIF identity before launching research.")
         source_mode = (
             SourceMode.GLEIF_LIVE
             if command.source_mode == SourceMode.GLEIF_LIVE.value or command.source_mode == SourceMode.GLEIF_LIVE
@@ -149,6 +115,9 @@ class LocalSynchronousApplication(TrustSignalApplication):
                 "registration_id": command.registration_id.strip() if command.registration_id else None,
                 "lei": command.lei.strip() if command.lei else None,
                 "website": command.website.strip() if command.website else None,
+                "registration_authority": command.registration_authority,
+                "registered_address": command.registered_address,
+                "aliases": command.aliases,
             },
             source_mode=source_mode,
         )

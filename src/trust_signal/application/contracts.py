@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Protocol
 
+from trust_signal.connectors.base import EntityRecord
+
 
 class CaseStatus(str, Enum):
     QUEUED = "queued"
@@ -70,6 +72,7 @@ class IdentityVerificationResult:
     observation_ids: list[str] = field(default_factory=list)
     checked_at: str | None = None
     error: str | None = None
+    profile: EntityRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +83,9 @@ class SubmitCaseCommand:
     registration_id: str | None = None
     website: str | None = None
     source_mode: str = "demo_fixtures"
+    registration_authority: str | None = None
+    registered_address: str | None = None
+    aliases: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
