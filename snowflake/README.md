@@ -1,12 +1,20 @@
 # Snowflake Resources
 
+This root-level directory is the Snowflake provider boundary. Its existing setup,
+SQL and workflow resources remain here. Future provider bootstrap/application/
+adapters also belong here, not inside src/trust_signal. The common backend supplies
+interfaces and research/review components; this provider composes them for the common
+UI in ui/. See the [component architecture](../docs/architecture/components.md).
+Provider Python code currently mixed into shared src/ still needs the planned
+compatibility-preserving extraction; this note does not claim that move is complete.
+
 ## Complete Initialization
 
 All canonical installation definitions live here and are versioned in Git.
 Start with [setup/README.md](setup/README.md) or run
 `sh snowflake/setup/initialize.sh` with your target configuration.
 
-Use [Snowflake initialization](../docs/snowflake-initialization.md) for a new
+Use [Snowflake initialization](../docs/operations/snowflake-initialization.md) for a new
 backend installation. `python -m trust_signal.persistence.initialize` generates
 an ordered, administrator-reviewed SQL bundle containing all migrations, a
 checksum ledger, optional ingestion identity, scoped network integration, grants,
@@ -19,7 +27,7 @@ only the complete initializer tracks applied migration checksums.
 
 ## Ingestion-Only Setup
 
-Follow [the repository quickstart](../README.md#try-in-your-snowflake-account).
+Follow [the repository Snowflake setup](../README.md#configure-snowflake).
 Keep account settings in private `.env`, credentials in `.secrets/`, and generated
 plans in ignored `snowflake/build/`. Use the key generator for a new installation;
 it refuses to overwrite credentials. Preserve existing working keys.
@@ -53,9 +61,12 @@ snowflake/
   tasks/                   # Graph catalog, task templates and activation controls
   verification/            # Preflight and inventory SQL templates
   build/                   # Generated account-specific bundles; Git ignored
-  app/streamlit_app.py      # Future hosted reviewer UI scaffold
-  snowflake.yml            # Future Streamlit deployment scaffold
 ```
+
+UI source/settings and the hosted deployment manifest live in the shared
+[top-level ui directory](../ui/README.md). This provider directory contains backend
+resources only. The old Snowflake UI and its manifest have been removed;
+`ui/app.py` is the single selected UI.
 
 Files ending in `.sql.template` use named placeholders such as `{database}` and
 must be rendered by setup before execution. `procedures/WORKFLOW.json` lists all
@@ -96,7 +107,7 @@ this is a single-writer path, not concurrent exactly-once processing.
 Real GLEIF evidence, source-run logging, key-pair session reuse and bundle replay
 have been verified in the existing DEV account. Full fresh-account provisioning
 has not been independently live-tested. Setup tests do not claim cloud deployment.
-See [the integration register](../docs/source-integration-status.md).
+See [the integration register](../docs/verification/history.md).
 
 The Streamlit manifest and app are scaffolding, not a deployed persistent worker,
 authenticated reviewer UI, Cortex service or Task/dbt pipeline. The CLI manifest
@@ -104,5 +115,5 @@ does not automatically consume `.env`; UI deployment needs explicit parameter ma
 
 Before multi-user deployment, implement tenant-bound identities, row access,
 retention/licensing controls and safe review actions. Do not grant the UI or AI
-tools raw-response access. See [Portable Deployment](../docs/portable-deployment.md)
-and [the delivery blueprint](../docs/snowflake-delivery-blueprint.md).
+tools raw-response access. See [Portable Deployment](../docs/deployment/portable.md)
+and [the delivery blueprint](../docs/deployment/snowflake.md).

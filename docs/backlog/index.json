@@ -1,11 +1,14 @@
 {
   "schema_version": 1,
-  "baseline_date": "2026-10-04",
-  "baseline_head": "cd195d76aa6ce16aae54e5aa8d7164835982cd49",
-  "baseline_scope": "Current working tree, including uncommitted implementation; not a released/tagged baseline.",
+  "baseline_date": "2026-10-05",
+  "baseline_head": "0950e569c1f627521f288e79a84c4754829d48db",
+  "baseline_scope": "Verified published implementation checkpoint; subsequent working-tree changes are separate, not a release or production verification.",
   "tasks": [
     {
       "id": "TS-001",
+      "delivery_status": "Closed",
+      "closed_date": "2026-10-05",
+      "completion_evidence": "docs/verification/history.md",
       "priority": "P0",
       "area": "Foundation",
       "title": "Freeze and verify the implementation baseline",
@@ -23,7 +26,7 @@
       "acceptance_criteria": [
         "Review all tracked/untracked changes and preserve unrelated user work.",
         "Run locked dependency installation, full pytest and full lint; record versions and results.",
-        "With explicit approval, commit the agreed baseline and record its commit/tag in baseline.md; exclude credentials, outputs and private keys."
+        "With explicit approval, commit the agreed baseline and record its commit/tag in docs/verification/history.md; exclude credentials, outputs and private keys."
       ],
       "test_requirements": "Full unit suite, clean lint, secret scan and fresh-checkout reproduction.",
       "issue_file": "docs/backlog/TS-001.md",
@@ -275,7 +278,7 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/11",
       "context": "Global company identity coverage currently relies mainly on GLEIF and Norway.",
       "paths": [
-        "docs/official-source-catalog.md",
+        "docs/sources/catalog.md",
         "src/trust_signal/connectors/registry.py",
         "src/trust_signal/connectors"
       ],
@@ -336,7 +339,7 @@
       "paths": [
         "src/trust_signal/agents/sanctions.py",
         "src/trust_signal/agents/ownership.py",
-        "docs/sanctions-specialist.md"
+        "docs/components/research.md"
       ],
       "acceptance_criteria": [
         "Document reviewed jurisdiction-specific ownership/control rules and authoritative inputs.",
@@ -422,7 +425,7 @@
       "paths": [
         "src/trust_signal/agents/news.py",
         "src/trust_signal/connectors/gdelt.py",
-        "docs/official-source-catalog.md"
+        "docs/sources/catalog.md"
       ],
       "acceptance_criteria": [
         "Record permitted storage/display/full-text rights for the selected production provider.",
@@ -535,9 +538,7 @@
       "context": "Unit tests alone do not calibrate identity matching or adverse attribution quality.",
       "paths": [
         "tests",
-        "docs/sanctions-specialist.md",
-        "docs/legal-specialist.md",
-        "docs/news-specialist.md"
+        "docs/components/research.md"
       ],
       "acceptance_criteria": [
         "Create rights-safe labeled cases across jurisdictions/languages and same-name entities.",
@@ -653,7 +654,7 @@
       "paths": [
         "src/trust_signal/domain/evidence.py",
         "src/trust_signal/research",
-        "docs/snowflake-delivery-blueprint.md"
+        "docs/deployment/snowflake.md"
       ],
       "acceptance_criteria": [
         "Verify approved account capability, model allowlist, residency and inference budget before calls.",
@@ -683,8 +684,8 @@
       "context": "Retrieval and agent tools are optional provider adapters over authorized evidence; no Snowflake trial workaround or hosted CoCo feasibility is required.",
       "paths": [
         "snowflake",
-        "docs/product-and-technical-design.md",
-        "docs/snowflake-delivery-blueprint.md"
+        "docs/architecture/overview.md",
+        "docs/deployment/snowflake.md"
       ],
       "acceptance_criteria": [
         "Deploy reviewed search/semantic definitions over approved case facts and excerpts.",
@@ -711,8 +712,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/26",
       "context": "Provider-independent permissions, residency, quotas and cost controls are required for managed workflow use; Snowflake trial/billing troubleshooting and separately hosted backend deployment are out of scope.",
       "paths": [
-        "docs/deployment-readiness.md",
-        "docs/ingestion-access-hardening.md",
+        "docs/deployment/readiness.md",
+        "docs/operations/ingestion-security.md",
         "snowflake/operations"
       ],
       "acceptance_criteria": [
@@ -745,7 +746,7 @@
       "paths": [
         "tests",
         "examples",
-        "docs/source-integration-status.md"
+        "docs/verification/history.md"
       ],
       "acceptance_criteria": [
         "Run approved bounded live cases with at least three operational specialist lanes.",
@@ -773,9 +774,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/28",
       "context": "The UI is deliberately deferred; prototype/design are not connected product completion.",
       "paths": [
-        "app.py",
-        "docs/figma-design-handoff.md",
-        "docs/figma-design-prompt.md"
+        "ui/app.py",
+        "docs/design/streamlit.md"
       ],
       "acceptance_criteria": [
         "Reuse the agreed design and authorized application services for case/review commands; a separate HTTP API deployment is optional.",
@@ -837,7 +837,7 @@
         "pyproject.toml",
         "uv.lock",
         "snowflake",
-        "docs/snowflake-initialization.md"
+        "docs/operations/snowflake-initialization.md"
       ],
       "acceptance_criteria": [
         "Add CI for locked install, tests, lint, backlog checks and secret scanning.",
@@ -851,6 +851,8 @@
     },
     {
       "id": "TS-030",
+      "delivery_status": "Implemented locally; publication and review pending",
+      "completion_evidence": "docs/verification/history.md",
       "priority": "P1",
       "area": "Documentation",
       "title": "Reconcile current README and implementation status documents",
@@ -862,9 +864,9 @@
       "context": "Some historical documents still describe implemented specialists as missing.",
       "paths": [
         "README.md",
-        "docs/source-connectors.md",
-        "docs/source-integration-status.md",
-        "docs/complete-implementation-plan.md"
+        "docs/sources/connectors.md",
+        "docs/verification/history.md",
+        "docs/backlog/README.md"
       ],
       "acceptance_criteria": [
         "Update current-status sections against code without erasing dated historical live reports.",
@@ -919,7 +921,7 @@
       "paths": [
         "src/trust_signal/connectors/registry.py",
         "src/trust_signal/connectors/feeds.py",
-        "docs/legal-specialist.md"
+        "docs/components/research.md"
       ],
       "acceptance_criteria": [
         "Document permission for the intended project use or retain blocked coverage.",
@@ -946,7 +948,7 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/34",
       "context": "Current legal coverage is mostly UK metadata and World Bank procurement; it is not worldwide legal coverage.",
       "paths": [
-        "docs/official-source-catalog.md",
+        "docs/sources/catalog.md",
         "src/trust_signal/connectors",
         "src/trust_signal/agents/legal.py"
       ],
@@ -1002,8 +1004,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/36",
       "context": "The hackathon scope is closed. A maintained worldwide open-source solution needs explicit first-release boundaries rather than inherited demo assumptions.",
       "paths": [
-        "docs/project-context.md",
-        "docs/system-design.md"
+        "docs/product/scope.md",
+        "docs/architecture/overview.md"
       ],
       "acceptance_criteria": [
         "Record the 2026-10-04 direction change; remove hackathon submission and deadline obligations from active plans while preserving dated history.",
@@ -1057,7 +1059,7 @@
       "context": "Portable boundaries exist, but compatibility and independent reuse must be tested before replacing stores, workflows or models.",
       "paths": [
         "src/trust_signal",
-        "docs/portable-deployment.md"
+        "docs/deployment/portable.md"
       ],
       "acceptance_criteria": [
         "Inventory connector, store, runtime, specialist, aggregator, validation, assessment, review and AI interfaces with versioned schemas and capability declarations.",
@@ -1086,7 +1088,7 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/39",
       "context": "A contributor should fork, configure approved services and install without chat history; the proposed onboarding commands are not already implemented.",
       "paths": [
-        "docs/portable-deployment.md",
+        "docs/deployment/portable.md",
         "snowflake/setup",
         "src/trust_signal/cli.py"
       ],
@@ -1117,7 +1119,7 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/40",
       "context": "Target architecture is provider-portable; Snowflake is an existing adapter, not a required platform. Candidate cloud profiles require bounded implementation and verification before support claims.",
       "paths": [
-        "docs/portable-deployment.md",
+        "docs/deployment/portable.md",
         "src/trust_signal/orchestration",
         "src/trust_signal/persistence"
       ],
@@ -1152,9 +1154,9 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/41",
       "context": "Restricted raw responses may contain personal information. Immutable review history is not permission for indefinite retention.",
       "paths": [
-        "docs/system-design.md",
+        "docs/architecture/overview.md",
         "src/trust_signal/persistence",
-        "docs/official-source-catalog.md"
+        "docs/sources/catalog.md"
       ],
       "acceptance_criteria": [
         "Obtain operator-approved jurisdiction/source/purpose policies for raw documents, extracts, search indexes, case snapshots, audit and logs; record license renewal/revocation.",
@@ -1182,7 +1184,7 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/42",
       "context": "Interrupted-source retries do not recover a lost installation or complete evidence/decision history.",
       "paths": [
-        "docs/system-design.md",
+        "docs/architecture/overview.md",
         "snowflake",
         "src/trust_signal/persistence"
       ],
@@ -1211,7 +1213,7 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/43",
       "context": "Existing authorization and Cortex injection tasks need a cross-component threat model, not a second implementation of the same safeguards.",
       "paths": [
-        "docs/system-design.md",
+        "docs/architecture/overview.md",
         "src/trust_signal/connectors",
         "src/trust_signal/research",
         ".github"
@@ -1241,9 +1243,9 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/44",
       "context": "Global monitoring needs measured source freshness and bounded resource consumption, not an unconditional real-time promise.",
       "paths": [
-        "docs/system-design.md",
+        "docs/architecture/overview.md",
         "src/trust_signal/orchestration",
-        "docs/dev-cost-controls.md"
+        "docs/operations/cost-controls.md"
       ],
       "acceptance_criteria": [
         "Choose source-specific freshness/latency/availability targets, alert ownership and incident response procedures; distinguish provider delay from system delay.",
@@ -1271,8 +1273,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/45",
       "context": "Financial statements, restatements and overdue filings are preserved target dimensions but not approved source-specific implementation.",
       "paths": [
-        "docs/product-and-technical-design.md",
-        "docs/official-source-catalog.md",
+        "docs/architecture/overview.md",
+        "docs/sources/catalog.md",
         "src/trust_signal/agents"
       ],
       "acceptance_criteria": [
@@ -1301,8 +1303,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/46",
       "context": "Recalls, safety actions, closures and material cyber events remain a logical specialist dimension; news presence alone does not verify such an event.",
       "paths": [
-        "docs/product-and-technical-design.md",
-        "docs/official-source-catalog.md",
+        "docs/architecture/overview.md",
+        "docs/sources/catalog.md",
         "src/trust_signal/agents"
       ],
       "acceptance_criteria": [
@@ -1331,8 +1333,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/47",
       "context": "Conflicting source claims, sanctions relationships and business conflicts of interest are separate concepts. A shared director is not proof of wrongdoing.",
       "paths": [
-        "docs/project-context.md",
-        "docs/ownership-specialist.md",
+        "docs/product/scope.md",
+        "docs/components/research.md",
         "src/trust_signal/agents/ownership.py"
       ],
       "acceptance_criteria": [
@@ -1359,9 +1361,8 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/48",
       "context": "UI remains later. Multilingual entity matching does not establish an accessible localized analyst interface.",
       "paths": [
-        "app.py",
-        "docs/figma-design-handoff.md",
-        "docs/figma-design-prompt.md"
+        "ui/app.py",
+        "docs/design/streamlit.md"
       ],
       "acceptance_criteria": [
         "Extend the agreed Streamlit experience with keyboard/focus/screen-reader, contrast, status announcements and non-color-only evidence states.",
@@ -1390,7 +1391,7 @@
       "paths": [
         "pyproject.toml",
         "snowflake",
-        "docs/portable-deployment.md"
+        "docs/deployment/portable.md"
       ],
       "acceptance_criteria": [
         "Choose supported Python/container/source installation artifacts and versioning; publish compatibility, upgrade and release verification requirements.",
@@ -1420,7 +1421,7 @@
       "paths": [
         "src/trust_signal/domain",
         "src/trust_signal/research",
-        "docs/system-design.md"
+        "docs/architecture/overview.md"
       ],
       "acceptance_criteria": [
         "Select first consumer/use case; version authenticated case/evidence export and webhook contracts with pagination, idempotency and scoped permissions.",
@@ -1447,9 +1448,9 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/51",
       "context": "A worldwide open-source catalog needs explicit coverage and maintenance, not a list interpreted as complete jurisdiction support.",
       "paths": [
-        "docs/official-source-catalog.md",
+        "docs/sources/catalog.md",
         "src/trust_signal/connectors/registry.py",
-        "docs/source-integration-status.md"
+        "docs/verification/history.md"
       ],
       "acceptance_criteria": [
         "Version country/entity/event coverage, source authority, access/rights, permitted retention/display, freshness, owner and live verification date.",
@@ -1477,9 +1478,9 @@
       "github_issue_url": "https://github.com/ankur-agarwal-38aa6766/trust-signal/issues/52",
       "context": "Self-hosted installations are the current direction; a hosted customer control plane with BYO cloud credentials remains optional and unimplemented.",
       "paths": [
-        "docs/portable-deployment.md",
+        "docs/deployment/portable.md",
         "src/trust_signal/persistence",
-        "docs/system-design.md"
+        "docs/architecture/overview.md"
       ],
       "acceptance_criteria": [
         "Decide single-installation versus hosted multi-tenant support and document ownership of identities, service credentials, data residency and quotas.",
@@ -1503,14 +1504,15 @@
     "recorded_date": "2026-10-04",
     "active_scope": "Provider-portable worldwide open-source research solution; Streamlit UI and provider-managed procedures/jobs/DAG workflows.",
     "hackathon_scope": "Closed; no submission, deadline or CoCo proof obligation.",
-    "context_file": "docs/future-scope.md",
+    "context_file": "docs/product/scope.md",
     "decision_owner_task": "TS-035",
-    "scope_updated_date": "2026-10-05",
+    "scope_updated_date": "2026-10-14",
     "excluded_scope": [
       "Hackathon submission/deadlines and CoCo proof",
       "Snowflake trial-account workaround and upgrade investigations",
       "Separately hosted always-running backend service as a required architecture"
-    ]
+    ],
+    "next_provider": "Google Cloud; direct configured identity/project first, product signup deferred; implementation and live verification pending."
   },
   "scope_coverage": {
     "audited_date": "2026-10-05",
@@ -1712,5 +1714,95 @@
         ]
       }
     ]
-  }
+  },
+  "documentation": {
+    "index_file": "docs/README.md",
+    "status_file": "docs/status.md",
+    "architecture_file": "docs/architecture/overview.md",
+    "backlog_file": "docs/backlog/README.md",
+    "verification_file": "docs/verification/history.md"
+  },
+  "delivery_groups": [
+    {
+      "name": "Product and contracts",
+      "task_ids": [
+        "TS-001",
+        "TS-030",
+        "TS-035",
+        "TS-036",
+        "TS-037"
+      ]
+    },
+    {
+      "name": "Durable runtime and provider delivery",
+      "task_ids": [
+        "TS-002",
+        "TS-003",
+        "TS-004",
+        "TS-005",
+        "TS-008",
+        "TS-021",
+        "TS-022",
+        "TS-029",
+        "TS-038",
+        "TS-039"
+      ]
+    },
+    {
+      "name": "Evidence research and assessment",
+      "task_ids": [
+        "TS-006",
+        "TS-007",
+        "TS-010",
+        "TS-011",
+        "TS-012",
+        "TS-013",
+        "TS-014",
+        "TS-015",
+        "TS-016",
+        "TS-017",
+        "TS-018",
+        "TS-019",
+        "TS-020",
+        "TS-031",
+        "TS-032",
+        "TS-033"
+      ]
+    },
+    {
+      "name": "Operations and release assurance",
+      "task_ids": [
+        "TS-009",
+        "TS-025",
+        "TS-026",
+        "TS-028",
+        "TS-034",
+        "TS-040",
+        "TS-041",
+        "TS-042",
+        "TS-043",
+        "TS-050"
+      ]
+    },
+    {
+      "name": "Connected Streamlit experience",
+      "task_ids": [
+        "TS-027",
+        "TS-047"
+      ]
+    },
+    {
+      "name": "Optional capabilities and distribution",
+      "task_ids": [
+        "TS-023",
+        "TS-024",
+        "TS-044",
+        "TS-045",
+        "TS-046",
+        "TS-048",
+        "TS-049",
+        "TS-051"
+      ]
+    }
+  ]
 }

@@ -27,6 +27,6 @@ Omit `--without-external-access` only if the account permits the approved GLEIF
 integration. Optionally include application identity provisioning with
 `--ingestion-env-file .env --public-key-file .secrets/snowflake_key.pub`.
 
-See [the full initialization guide](../../docs/snowflake-initialization.md)
+See [the full initialization guide](../../docs/operations/snowflake-initialization.md)
 for prerequisites, credentials, re-runs and activation. Do not place credentials
 or account-specific generated SQL in the versioned source directories.
